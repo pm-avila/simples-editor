@@ -88,5 +88,15 @@ class BackendVerifyJwtDecoratorTest(unittest.TestCase):
         self.assertEqual(handler(request), "user-123")
 
 
+class BackendJwtReadmeTest(unittest.TestCase):
+    def test_readme_documents_backend_jwt_validation(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("verify_jwt", content)
+        self.assertIn("SUPABASE_JWT_SECRET", content)
+        self.assertIn("sub", content)
+        self.assertIn("JWT", content)
+        self.assertIn("without querying the database", content)
+
+
 if __name__ == "__main__":
     unittest.main()
