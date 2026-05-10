@@ -151,6 +151,33 @@ class ComposeStructureTest(unittest.TestCase):
             f"backend env vars must use ${{VAR:-default}} syntax; bare refs found: {bare_refs}",
         )
 
+    def test_backend_environment_block_exists(self):
+        block = _service_block(self.raw, "backend")
+        self.assertRegex(
+            block,
+            r"\benvironment\b",
+            "backend service must declare an 'environment' block",
+        )
+
+    def test_backend_environment_has_all_required_keys(self):
+        block = _service_block(self.raw, "backend")
+        missing = [k for k in REQUIRED_ENV_KEYS if k not in block]
+        self.assertFalse(
+            missing,
+            f"backend environment block is missing required keys: {missing}",
+        )
+
+    def test_backend_environment_keys_use_safe_defaults(self):
+        block = _service_block(self.raw, "backend")
+        bad = [
+            k for k in REQUIRED_ENV_KEYS
+            if not re.search(rf"{re.escape(k)}:\s*\$\{{{re.escape(k)}:-[^}}]+\}}", block)
+        ]
+        self.assertFalse(
+            bad,
+            f"backend env keys must use ${{KEY:-default}} syntax; non-compliant keys: {bad}",
+        )
+
     def test_nginx_mounts_default_conf(self):
         block = _service_block(self.raw, "nginx")
         self.assertIn("default.conf", block, "nginx must volume-mount nginx/default.conf")
@@ -222,6 +249,34 @@ class BackendAppTest(unittest.TestCase):
 
     def test_has_health_route(self):
         self.assertIn('/health', self.src, "backend/app.py must define a /health route")
+
+
+# ---------------------------------------------------------------------------
+# backend/app.py route-response contracts
+# ---------------------------------------------------------------------------
+
+class BackendAppRouteResponseTest(unittest.TestCase):
+    """Verify / and /health actually return {"status": "ok"} via Flask test client."""
+
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        backend_dir = os.path.join(REPO_ROOT, "backend")
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from app import app  # noqa: PLC0415
+        app.config["TESTING"] = True
+        cls.client = app.test_client()
+
+    def test_root_route_returns_status_ok(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"status": "ok"})
+
+    def test_health_route_returns_status_ok(self):
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"status": "ok"})
 
 
 # ---------------------------------------------------------------------------
