@@ -1,10 +1,20 @@
 import pathlib
+import importlib.util
+import sys
 import unittest
-
-from backend.app import create_app
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+BACKEND_APP_IMPORTED_AT_MODULE_LOAD = "backend.app" in sys.modules
+
+
+def _load_create_app():
+    module_path = ROOT / "backend" / "app.py"
+    spec = importlib.util.spec_from_file_location("backend.app", module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module.create_app
 
 
 class HealthEndpointFoundationTest(unittest.TestCase):
@@ -21,11 +31,17 @@ class HealthEndpointFoundationTest(unittest.TestCase):
         content = (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8")
         self.assertIn("flask==", content.lower())
 
+    def test_backend_app_is_not_imported_at_module_load(self):
+        self.assertFalse(
+            BACKEND_APP_IMPORTED_AT_MODULE_LOAD,
+            "backend.app should load lazily in setUpClass",
+        )
+
 
 class HealthEndpointContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = create_app().test_client()
+        cls.client = _load_create_app()().test_client()
 
     def test_get_api_health_returns_ok_status(self):
         response = self.client.get("/api/health")
