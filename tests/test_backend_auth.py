@@ -49,5 +49,44 @@ class BackendJwtCoreTest(unittest.TestCase):
             self.module.extract_user_id({})
 
 
+from dataclasses import dataclass
+
+
+@dataclass
+class FakeRequest:
+    headers: dict
+    user_id: str | None = None
+
+
+class BackendVerifyJwtDecoratorTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        module_path = ROOT / "backend" / "auth.py"
+        spec = importlib.util.spec_from_file_location("backend.auth", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.module = module
+
+    def test_verify_jwt_rejects_missing_authorization_header(self):
+        request = FakeRequest(headers={})
+
+        @self.module.verify_jwt("secret")
+        def handler(current_request):
+            return current_request.user_id
+
+        with self.assertRaises(self.module.AuthError):
+            handler(request)
+
+    def test_verify_jwt_injects_user_id_from_sub_claim(self):
+        token = jwt.encode({"sub": "user-123"}, "secret", algorithm="HS256")
+        request = FakeRequest(headers={"Authorization": f"Bearer {token}"})
+
+        @self.module.verify_jwt("secret")
+        def handler(current_request):
+            return current_request.user_id
+
+        self.assertEqual(handler(request), "user-123")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 import jwt
+from functools import wraps
 
 
 class AuthError(Exception):
@@ -17,3 +18,25 @@ def extract_user_id(claims):
     if not user_id:
         raise AuthError("missing sub claim")
     return user_id
+
+
+def _extract_bearer_token(request):
+    header = request.headers.get("Authorization", "")
+    prefix = "Bearer "
+    if not header.startswith(prefix):
+        raise AuthError("missing bearer token")
+    return header[len(prefix):]
+
+
+def verify_jwt(jwt_secret):
+    def decorator(handler):
+        @wraps(handler)
+        def wrapped(request, *args, **kwargs):
+            token = _extract_bearer_token(request)
+            claims = decode_supabase_jwt(token, jwt_secret)
+            request.user_id = extract_user_id(claims)
+            return handler(request, *args, **kwargs)
+
+        return wrapped
+
+    return decorator
