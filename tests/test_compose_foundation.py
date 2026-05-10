@@ -6,10 +6,12 @@ Run with:
 """
 
 import os
+import re
 import unittest
 import yaml
 
 COMPOSE_FILE = os.path.join(os.path.dirname(__file__), "..", "docker-compose.yml")
+ENV_EXAMPLE_FILE = os.path.join(os.path.dirname(__file__), "..", ".env.example")
 REQUIRED_SERVICES = {"nginx", "frontend", "backend"}
 REQUIRED_VARIABLES = {
     "SUPABASE_URL",
@@ -74,6 +76,56 @@ class ComposeFoundationTest(unittest.TestCase):
                     f"Service '{name}' must not reference local build context '{ctx}' in Task 1; "
                     "use a placeholder image instead.",
                 )
+
+    # Finding 1: services must use publicly pullable placeholder images
+    def test_frontend_and_backend_use_pullable_placeholder_images(self):
+        """Task 1: frontend and backend must use publicly pullable images, not private/local tags."""
+        services = self.compose.get("services", {})
+        for name in ("frontend", "backend"):
+            svc = services.get(name, {})
+            image = svc.get("image", "")
+            self.assertTrue(image, f"Service '{name}' must declare an 'image' key.")
+            self.assertFalse(
+                image.startswith("simples-"),
+                f"Service '{name}' uses local/private image '{image}'; "
+                "use a pullable placeholder image (e.g. python:3.12-alpine) instead.",
+            )
+
+    # Finding 2: env var refs must carry safe :-defaults
+    def test_env_mappings_have_safe_defaults(self):
+        """All ${VAR} refs in compose must use ${VAR:-default} so compose works without a .env file."""
+        with open(COMPOSE_FILE, "r") as f:
+            raw = f.read()
+        bare_refs = re.findall(r"\$\{[A-Z_]+\}", raw)
+        self.assertFalse(
+            bare_refs,
+            f"docker-compose.yml has env refs without ':-' defaults: {bare_refs}. "
+            "Use ${VAR:-default} syntax instead.",
+        )
+
+
+# Finding 3: .env.example must exist and expose every required variable
+class EnvExampleTest(unittest.TestCase):
+
+    def test_env_example_exists(self):
+        self.assertTrue(
+            os.path.isfile(ENV_EXAMPLE_FILE),
+            ".env.example must exist at repo root",
+        )
+
+    def test_env_example_contains_required_keys(self):
+        with open(ENV_EXAMPLE_FILE, "r") as f:
+            lines = f.readlines()
+        keys = set()
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                keys.add(line.split("=")[0])
+        missing = REQUIRED_VARIABLES - keys
+        self.assertFalse(
+            missing,
+            f".env.example is missing required keys: {missing}",
+        )
 
 
 if __name__ == "__main__":
