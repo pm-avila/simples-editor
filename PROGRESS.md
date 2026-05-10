@@ -1,15 +1,15 @@
 # Progress
 
 ## Sprint 1
-- [x] feat(repo): bootstrap repository documentation
-- [ ] feat(project): configure delivery kanban workflow
-- [ ] feat(infra): scaffold docker compose foundation
-- [ ] feat(infra): validate local startup flow on docker compose
-- [ ] feat(auth): provision Supabase auth for v1
-- [ ] feat(login): implement Supabase email/password sign-in
-- [ ] feat(auth): enforce JWT validation on backend endpoints
-- [ ] feat(api): expose public health check endpoint
-- [ ] feat(contrib): validate pull request workflow for every team member
+- [x] feat(repo): bootstrap repository documentation — PR #48 merged into `dev`
+- [ ] feat(project): configure delivery kanban workflow — PR #49 open
+- [ ] feat(infra): scaffold docker compose foundation — PR #50 open
+- [ ] feat(infra): validate local startup flow on docker compose — PR #51 open
+- [ ] feat(auth): provision Supabase auth for v1 — PR #52 open
+- [ ] feat(login): implement Supabase email/password sign-in — PR #53 open
+- [ ] feat(auth): enforce JWT validation on backend endpoints — PR #54 open
+- [ ] feat(api): expose public health check endpoint — PR #55 open
+- [ ] feat(contrib): validate pull request workflow for every team member — PR #56 open
 
 ## Sprint 2
 - [ ] feat(editor): integrate Monaco on the main route
