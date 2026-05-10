@@ -266,11 +266,18 @@ class BackendAppRouteResponseTest(unittest.TestCase):
 
     def _assert_route_returns_status_ok(self, function_name):
         function = next(
-            node for node in self.tree.body
-            if isinstance(node, ast.FunctionDef) and node.name == function_name
+            (
+                node for node in self.tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == function_name
+            ),
+            None,
         )
+        self.assertIsNotNone(function, f"{function_name} route handler must exist")
         self.assertTrue(function.body, f"{function_name} must have a body")
-        return_stmt = function.body[0]
+        return_stmt = next(
+            (node for node in ast.walk(function) if isinstance(node, ast.Return)),
+            None,
+        )
         self.assertIsInstance(return_stmt, ast.Return, f"{function_name} must return a response")
         call = return_stmt.value
         self.assertIsInstance(call, ast.Call, f"{function_name} must return a call expression")
@@ -289,6 +296,36 @@ class BackendAppRouteResponseTest(unittest.TestCase):
 
     def test_health_route_returns_status_ok(self):
         self._assert_route_returns_status_ok("health")
+
+
+class BackendAppRouteResponseRegressionTest(unittest.TestCase):
+    def test_route_contract_ignores_docstring_before_return(self):
+        checker = BackendAppRouteResponseTest()
+        checker.tree = ast.parse(
+            """
+from flask import jsonify
+
+def index():
+    \"\"\"Docs.\"\"\"
+    return jsonify({"status": "ok"})
+"""
+        )
+
+        checker._assert_route_returns_status_ok("index")
+
+    def test_missing_route_handler_fails_with_assertion(self):
+        checker = BackendAppRouteResponseTest()
+        checker.tree = ast.parse(
+            """
+from flask import jsonify
+
+def index():
+    return jsonify({"status": "ok"})
+"""
+        )
+
+        with self.assertRaises(AssertionError):
+            checker._assert_route_returns_status_ok("health")
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +375,8 @@ class NginxEntryPointContractTest(unittest.TestCase):
                 in_services = True
                 continue
             if in_services:
+                if re.match(r"^[^\s#][^:]*\s*:", line):
+                    break
                 m = re.match(r"^  (\w[\w-]*)\s*:", line)
                 if m:
                     names.append(m.group(1))
@@ -358,6 +397,23 @@ class NginxEntryPointContractTest(unittest.TestCase):
                     host_bindings,
                     f"service '{name}' must not bind host ports — all traffic must flow through nginx: {host_bindings}",
                 )
+
+
+class NginxEntryPointContractRegressionTest(unittest.TestCase):
+    def test_all_service_names_stops_at_next_top_level_section(self):
+        checker = NginxEntryPointContractTest()
+        checker.raw = """
+services:
+  nginx:
+    image: nginx:alpine
+  frontend:
+    image: python:3.12-alpine
+
+volumes:
+  cache:
+"""
+
+        self.assertEqual(checker._all_service_names(), ["nginx", "frontend"])
 
     def test_nginx_conf_listen_directive_is_port_80(self):
         with open(NGINX_CONF) as f:
