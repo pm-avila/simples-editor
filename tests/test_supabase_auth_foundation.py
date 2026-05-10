@@ -75,6 +75,16 @@ class BackendAuthConfigTest(unittest.TestCase):
         self.assertIn("JWT", summary)
         self.assertIn("without querying the database", summary)
 
+    def test_load_supabase_auth_config_rejects_blank_values(self):
+        with self.assertRaises(ValueError):
+            self.module.load_supabase_auth_config(
+                {
+                    "SUPABASE_URL": "   ",
+                    "SUPABASE_ANON_KEY": "anon",
+                    "SUPABASE_JWT_SECRET": "secret",
+                }
+            )
+
 
 class ReadmeSupabaseAuthFoundationTest(unittest.TestCase):
     def test_readme_documents_supabase_auth_foundation(self):

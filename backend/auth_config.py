@@ -9,12 +9,19 @@ class SupabaseAuthConfig:
     jwt_secret: str
 
 
+def _read_required_env(source, key):
+    value = source[key].strip()
+    if not value:
+        raise ValueError(f"{key} must not be blank")
+    return value
+
+
 def load_supabase_auth_config(env=None):
     source = os.environ if env is None else env
     return SupabaseAuthConfig(
-        url=source["SUPABASE_URL"],
-        anon_key=source["SUPABASE_ANON_KEY"],
-        jwt_secret=source["SUPABASE_JWT_SECRET"],
+        url=_read_required_env(source, "SUPABASE_URL"),
+        anon_key=_read_required_env(source, "SUPABASE_ANON_KEY"),
+        jwt_secret=_read_required_env(source, "SUPABASE_JWT_SECRET"),
     )
 
 
