@@ -37,5 +37,13 @@ class PrWorkflowEvidenceTest(unittest.TestCase):
         self.assertIn("MERGED", content)
 
 
+class PrWorkflowSprintAlignmentTest(unittest.TestCase):
+    def test_pr_workflow_mentions_parallel_sprint_goal(self):
+        content = (ROOT / "docs" / "pr-workflow.md").read_text(encoding="utf-8")
+        self.assertIn("parallel", content.lower())
+        self.assertIn("Sprint 1", content)
+        self.assertIn("every team member", content)
+
+
 if __name__ == "__main__":
     unittest.main()
