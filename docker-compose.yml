@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build: ./frontend
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+
+  backend:
+    build: ./backend
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      COMPILE_TIMEOUT: ${COMPILE_TIMEOUT}
+      EXECUTION_TIMEOUT: ${EXECUTION_TIMEOUT}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE}
