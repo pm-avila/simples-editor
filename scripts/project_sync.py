@@ -45,7 +45,11 @@ def determine_status(issue: dict, pr: dict | None = None) -> str:
     if issue.get("state") == "closed":
         return "Done"
     if pr is not None:
-        if pr.get("draft"):
+        if "draft" not in pr:
+            raise RuntimeError(
+                "PR payload is missing 'draft' field — malformed API response"
+            )
+        if pr["draft"]:
             return "In progress"
         return "In review"
     return "Backlog"
@@ -232,28 +236,34 @@ def _load_event() -> dict:
         return json.load(f)
 
 
-def _get_linked_pr(issue_number: int, repo: str) -> dict | None:
-    """Return the most relevant open PR linked to the issue, or None."""
+def _extract_linked_issue_number(pr: dict) -> int:
+    """Parse the first Closes/Fixes/Resolves #N reference from the PR body.
+
+    Raises RuntimeError if the PR body contains no recognised linked-issue
+    reference, since that makes it impossible to determine issue context for
+    a pull_request event.
+    """
+    body = pr.get("body") or ""
+    pattern = re.compile(r"(?:closes|fixes|resolves)\s+#(\d+)", re.IGNORECASE)
+    match = pattern.search(body)
+    if not match:
+        raise RuntimeError(
+            "pull_request payload has no linked issue reference "
+            "(expected 'Closes/Fixes/Resolves #N' in PR body)"
+        )
+    return int(match.group(1))
+
+
+def _fetch_issue(issue_number: int, repo: str) -> dict:
+    """Fetch a single issue by number from the GitHub REST API."""
     parts = repo.split("/", 1)
     if len(parts) != 2 or not parts[0] or not parts[1]:
         raise RuntimeError(
             f"GITHUB_REPOSITORY must be in 'owner/repo' format, got: {repo!r}"
         )
     owner, name = parts
-    # Use word-boundary match so #12 does not match #123 or #1234.
-    pattern = re.compile(r"#" + re.escape(str(issue_number)) + r"(?!\d)")
-    url = (
-        f"https://api.github.com/repos/{owner}/{name}/pulls"
-        f"?state=open&per_page=100"
-    )
-    # NOTE: fetches first 100 open PRs only — sufficient for Sprint 1 scale.
-    prs = _api_request("GET", url)
-    for pr in prs:
-        body = pr.get("body") or ""
-        title = pr.get("title") or ""
-        if pattern.search(body) or pattern.search(title):
-            return pr
-    return None
+    url = f"https://api.github.com/repos/{owner}/{name}/issues/{issue_number}"
+    return _api_request("GET", url)
 
 
 # ---------------------------------------------------------------------------
@@ -263,9 +273,22 @@ def _get_linked_pr(issue_number: int, repo: str) -> dict | None:
 def run() -> None:
     event = _load_event()
 
-    issue = event.get("issue")
-    if issue is None:
-        raise RuntimeError("Event payload has no 'issue' key; unsupported event type")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if not repo:
+        raise RuntimeError("GITHUB_REPOSITORY environment variable must be set")
+
+    if "issue" in event:
+        issue = event["issue"]
+        pr = None
+    elif "pull_request" in event:
+        pr = event["pull_request"]
+        issue_number = _extract_linked_issue_number(pr)
+        issue = _fetch_issue(issue_number, repo)
+    else:
+        raise RuntimeError(
+            "Event payload has neither 'issue' nor 'pull_request' key; "
+            "unsupported event type"
+        )
 
     if not is_sprint1_eligible(issue):
         print(
@@ -274,11 +297,6 @@ def run() -> None:
         )
         return
 
-    repo = os.environ.get("GITHUB_REPOSITORY")
-    if not repo:
-        raise RuntimeError("GITHUB_REPOSITORY environment variable must be set")
-
-    pr = _get_linked_pr(issue["number"], repo)
     status = determine_status(issue, pr)
 
     project_id, field_id, options = _get_project_meta()

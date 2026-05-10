@@ -3,10 +3,15 @@
 import sys
 import os
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
-from project_sync import is_sprint1_eligible, determine_status, _get_linked_pr
+from project_sync import (
+    is_sprint1_eligible,
+    determine_status,
+    _extract_linked_issue_number,
+)
 
 
 class TestSprint1Eligibility(unittest.TestCase):
@@ -67,12 +72,11 @@ class TestStatusMapping(unittest.TestCase):
             determine_status(self._open_issue(), pr=self._ready_pr()), "In review"
         )
 
-    def test_in_review_pr_without_draft_key_treated_as_ready(self):
-        """PR dict with no 'draft' key is treated as non-draft (In review)."""
+    def test_raises_if_pr_missing_draft_field(self):
+        """PR dict without a 'draft' key is malformed — must raise, not silently default."""
         pr_without_draft = {"state": "open"}
-        self.assertEqual(
-            determine_status(self._open_issue(), pr=pr_without_draft), "In review"
-        )
+        with self.assertRaises(RuntimeError):
+            determine_status(self._open_issue(), pr=pr_without_draft)
 
     def test_done_closed_issue(self):
         self.assertEqual(determine_status(self._closed_issue(), pr=None), "Done")
@@ -84,47 +88,220 @@ class TestStatusMapping(unittest.TestCase):
         )
 
 
-class TestLinkedPrMatching(unittest.TestCase):
-    """Unit tests for the PR number matching logic inside _get_linked_pr.
+class TestExtractLinkedIssueNumber(unittest.TestCase):
+    """Unit tests for _extract_linked_issue_number."""
 
-    We test the regex pattern directly (extracted from the function) to
-    avoid making real HTTP calls.
-    """
+    def _pr(self, body="", title=""):
+        return {"state": "open", "draft": False, "body": body, "title": title}
 
-    import re as _re
+    def test_extracts_closes_reference(self):
+        pr = self._pr(body="Closes #42.")
+        self.assertEqual(_extract_linked_issue_number(pr), 42)
 
-    def _pr(self, body="", title="", draft=False):
-        return {"state": "open", "draft": draft, "body": body, "title": title}
+    def test_extracts_fixes_reference(self):
+        pr = self._pr(body="fixes #7 in this commit")
+        self.assertEqual(_extract_linked_issue_number(pr), 7)
 
-    def _matches(self, issue_number, pr):
-        import re
-        pattern = re.compile(r"#" + re.escape(str(issue_number)) + r"(?!\d)")
-        return bool(
-            pattern.search(pr.get("body") or "")
-            or pattern.search(pr.get("title") or "")
-        )
+    def test_extracts_resolves_reference(self):
+        pr = self._pr(body="Resolves #100")
+        self.assertEqual(_extract_linked_issue_number(pr), 100)
 
-    def test_matches_exact_issue_reference_in_body(self):
-        pr = self._pr(body="Closes #12.")
-        self.assertTrue(self._matches(12, pr))
+    def test_case_insensitive_matching(self):
+        pr = self._pr(body="CLOSES #5")
+        self.assertEqual(_extract_linked_issue_number(pr), 5)
 
-    def test_matches_exact_issue_reference_in_title(self):
-        pr = self._pr(title="fix: resolve #12")
-        self.assertTrue(self._matches(12, pr))
+    def test_raises_if_no_linked_issue_reference(self):
+        pr = self._pr(body="No reference here — just a general PR")
+        with self.assertRaises(RuntimeError):
+            _extract_linked_issue_number(pr)
 
-    def test_no_false_positive_superstring_number(self):
-        """#12 must NOT match a PR that only mentions #123."""
-        pr = self._pr(body="Closes #123")
-        self.assertFalse(self._matches(12, pr))
+    def test_raises_if_body_is_none(self):
+        pr = {"state": "open", "draft": False, "body": None, "title": "fix: something"}
+        with self.assertRaises(RuntimeError):
+            _extract_linked_issue_number(pr)
 
-    def test_no_false_positive_prefix_number(self):
-        """#12 must NOT match a PR that only mentions #1234."""
-        pr = self._pr(body="see #1234 for context")
-        self.assertFalse(self._matches(12, pr))
+    def test_raises_if_body_is_empty(self):
+        pr = self._pr(body="")
+        with self.assertRaises(RuntimeError):
+            _extract_linked_issue_number(pr)
 
-    def test_no_match_when_pr_unrelated(self):
-        pr = self._pr(body="Fixes a typo in README", title="chore: cleanup")
-        self.assertFalse(self._matches(12, pr))
+    def test_extracts_first_reference_when_multiple(self):
+        pr = self._pr(body="Closes #10. Also related to #20.")
+        self.assertEqual(_extract_linked_issue_number(pr), 10)
+
+
+class TestRun(unittest.TestCase):
+    """Integration tests for run() — mocks external I/O only."""
+
+    _REPO = "pm-avila/test-repo"
+    _PROJECT_META = ("P_id", "F_id", {
+        "Backlog": "opt_backlog",
+        "In progress": "opt_in_progress",
+        "In review": "opt_in_review",
+        "Done": "opt_done",
+    })
+
+    def _sprint1_issue(self, number=1, state="open", node_id="I_node_1"):
+        return {
+            "number": number,
+            "state": state,
+            "node_id": node_id,
+            "labels": [{"name": "sprint-1"}],
+            "milestone": None,
+        }
+
+    def _non_sprint1_issue(self, number=2):
+        return {
+            "number": number,
+            "state": "open",
+            "node_id": "I_node_2",
+            "labels": [],
+            "milestone": None,
+        }
+
+    def _pr_payload(self, draft=False, body="Closes #1"):
+        return {
+            "number": 10,
+            "state": "open",
+            "draft": draft,
+            "body": body,
+            "title": "fix: something",
+            "node_id": "PR_node_10",
+        }
+
+    def _env(self):
+        return {"GITHUB_REPOSITORY": self._REPO, "GH_TOKEN": "fake_token"}
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._load_event")
+    def test_run_issue_event_open_issue_gives_backlog(
+        self, mock_load, mock_meta, mock_find, mock_update
+    ):
+        """issue event with open Sprint-1 issue and no PR → Backlog."""
+        mock_load.return_value = {"issue": self._sprint1_issue()}
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_backlog")
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._load_event")
+    def test_run_issue_event_closed_issue_gives_done(
+        self, mock_load, mock_meta, mock_find, mock_update
+    ):
+        """issue event with closed Sprint-1 issue → Done."""
+        mock_load.return_value = {"issue": self._sprint1_issue(state="closed")}
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_done")
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_issue")
+    @patch("project_sync._load_event")
+    def test_run_pull_request_event_ready_pr_gives_in_review(
+        self, mock_load, mock_fetch, mock_meta, mock_find, mock_update
+    ):
+        """pull_request event with non-draft PR and Sprint-1 linked issue → In review."""
+        pr = self._pr_payload(draft=False, body="Closes #1")
+        mock_load.return_value = {"pull_request": pr}
+        mock_fetch.return_value = self._sprint1_issue(number=1)
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_fetch.assert_called_once_with(1, self._REPO)
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_in_review")
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_issue")
+    @patch("project_sync._load_event")
+    def test_run_pull_request_event_draft_pr_gives_in_progress(
+        self, mock_load, mock_fetch, mock_meta, mock_find, mock_update
+    ):
+        """pull_request event with draft PR and Sprint-1 linked issue → In progress."""
+        pr = self._pr_payload(draft=True, body="Fixes #1")
+        mock_load.return_value = {"pull_request": pr}
+        mock_fetch.return_value = self._sprint1_issue(number=1)
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_fetch.assert_called_once_with(1, self._REPO)
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_in_progress")
+
+    @patch("project_sync._load_event")
+    def test_run_unsupported_event_raises(self, mock_load):
+        """Event payload with neither 'issue' nor 'pull_request' → RuntimeError."""
+        mock_load.return_value = {"release": {"tag_name": "v1.0"}}
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            with self.assertRaises(RuntimeError):
+                project_sync.run()
+
+    @patch("project_sync._load_event")
+    def test_run_pull_request_event_no_linked_issue_raises(self, mock_load):
+        """pull_request event whose body has no Closes/Fixes/Resolves #N → RuntimeError."""
+        pr = self._pr_payload(draft=False, body="General refactor, no linked issue")
+        mock_load.return_value = {"pull_request": pr}
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            with self.assertRaises(RuntimeError):
+                project_sync.run()
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_issue")
+    @patch("project_sync._load_event")
+    def test_run_pull_request_event_non_sprint1_skips(
+        self, mock_load, mock_fetch, mock_meta, mock_find, mock_update
+    ):
+        """pull_request event whose linked issue is not Sprint-1 → skip (no status update)."""
+        pr = self._pr_payload(draft=False, body="Closes #2")
+        mock_load.return_value = {"pull_request": pr}
+        mock_fetch.return_value = self._non_sprint1_issue(number=2)
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_meta.assert_not_called()
+        mock_update.assert_not_called()
+
+    @patch("project_sync._load_event")
+    def test_run_missing_github_repository_raises(self, mock_load):
+        """Missing GITHUB_REPOSITORY env var → RuntimeError for any event type."""
+        mock_load.return_value = {"issue": self._sprint1_issue()}
+
+        import project_sync
+        env_without_repo = {"GH_TOKEN": "fake_token"}
+        with patch.dict(os.environ, env_without_repo, clear=False):
+            env_copy = os.environ.copy()
+            env_copy.pop("GITHUB_REPOSITORY", None)
+            with patch.dict(os.environ, env_copy, clear=True):
+                with self.assertRaises(RuntimeError):
+                    project_sync.run()
 
 
 if __name__ == "__main__":
