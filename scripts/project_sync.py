@@ -181,7 +181,17 @@ query($projectId: ID!, $issueId: ID!) {
 def _get_project_meta() -> tuple[str, str, dict[str, str]]:
     """Return (project_id, status_field_id, {option_name: option_id})."""
     data = _graphql(_GET_PROJECT_Q, {"owner": PROJECT_OWNER, "number": PROJECT_NUMBER})
-    project = data["user"]["projectV2"]
+    user = data.get("user")
+    if user is None:
+        raise RuntimeError(
+            f"GraphQL response has no 'user' data — check PROJECT_OWNER ({PROJECT_OWNER!r})"
+        )
+    project = user.get("projectV2")
+    if project is None:
+        raise RuntimeError(
+            f"Project {PROJECT_NUMBER} not found for user {PROJECT_OWNER!r} "
+            "— verify PROJECT_NUMBER and repository ownership"
+        )
     project_id = project["id"]
 
     status_field = None
@@ -199,13 +209,24 @@ def _get_project_meta() -> tuple[str, str, dict[str, str]]:
 def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
     """Return the project item ID for the issue, adding it if absent."""
     data = _graphql(_GET_ITEM_Q, {"projectId": project_id, "issueId": issue_node_id})
-    for item in data["node"]["items"]["nodes"]:
+    node = data.get("node")
+    if node is None:
+        raise RuntimeError(
+            f"GraphQL 'node' is null — project id {project_id!r} not found or not accessible"
+        )
+    for item in node["items"]["nodes"]:
         content = item.get("content") or {}
         if content.get("id") == issue_node_id:
             return item["id"]
 
     added = _graphql(_ADD_ITEM_Q, {"projectId": project_id, "contentId": issue_node_id})
-    return added["addProjectV2ItemById"]["item"]["id"]
+    mutation_result = added.get("addProjectV2ItemById")
+    if mutation_result is None:
+        raise RuntimeError(
+            "addProjectV2ItemById returned null — item was not added to the project "
+            "(check project permissions and issue node id)"
+        )
+    return mutation_result["item"]["id"]
 
 
 def _update_status(
@@ -306,7 +327,12 @@ def run() -> None:
             f"Status '{status}' not found in project options: {list(options)}"
         )
 
-    issue_node_id = issue["node_id"]
+    issue_node_id = issue.get("node_id")
+    if not issue_node_id:
+        raise RuntimeError(
+            f"Issue #{issue.get('number')} payload is missing 'node_id' "
+            "— unexpected API response shape"
+        )
     item_id = _find_or_add_item(project_id, issue_node_id)
     _update_status(project_id, item_id, field_id, options[status])
 

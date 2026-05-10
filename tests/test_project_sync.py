@@ -11,6 +11,8 @@ from project_sync import (
     is_sprint1_eligible,
     determine_status,
     _extract_linked_issue_number,
+    _get_project_meta,
+    _find_or_add_item,
 )
 
 
@@ -302,6 +304,84 @@ class TestRun(unittest.TestCase):
             with patch.dict(os.environ, env_copy, clear=True):
                 with self.assertRaises(RuntimeError):
                     project_sync.run()
+
+
+class TestGetProjectMetaShapeValidation(unittest.TestCase):
+    """_get_project_meta must raise RuntimeError on unexpected GraphQL response shapes."""
+
+    @patch("project_sync._graphql")
+    def test_raises_when_user_is_null(self, mock_graphql):
+        """GraphQL returns user: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"user": None}
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("user", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_projectv2_is_null(self, mock_graphql):
+        """GraphQL returns projectV2: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"user": {"projectV2": None}}
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("project", str(cm.exception).lower())
+
+
+class TestFindOrAddItemShapeValidation(unittest.TestCase):
+    """_find_or_add_item must raise RuntimeError on unexpected GraphQL response shapes."""
+
+    @patch("project_sync._graphql")
+    def test_raises_when_node_is_null(self, mock_graphql):
+        """GraphQL returns node: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"node": None}
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("node", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_add_item_mutation_returns_null(self, mock_graphql):
+        """addProjectV2ItemById returns null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.side_effect = [
+            {"node": {"items": {"nodes": []}}},   # query: item not found
+            {"addProjectV2ItemById": None},         # mutation: null result
+        ]
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("addprojectv2itembyid", str(cm.exception).lower())
+
+
+class TestRunNodeIdValidation(unittest.TestCase):
+    """run() must raise explicitly when the issue REST payload lacks node_id."""
+
+    _REPO = "pm-avila/test-repo"
+    _PROJECT_META = ("P_id", "F_id", {
+        "Backlog": "opt_backlog",
+        "In progress": "opt_in_progress",
+        "In review": "opt_in_review",
+        "Done": "opt_done",
+    })
+
+    def _sprint1_issue_no_node_id(self, number=1, state="open"):
+        return {
+            "number": number,
+            "state": state,
+            "labels": [{"name": "sprint-1"}],
+            "milestone": None,
+            # node_id deliberately absent
+        }
+
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._load_event")
+    def test_run_raises_when_issue_missing_node_id(self, mock_load, mock_meta):
+        """Sprint-1 issue missing node_id → explicit RuntimeError instead of raw KeyError."""
+        mock_load.return_value = {"issue": self._sprint1_issue_no_node_id()}
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        env = {"GITHUB_REPOSITORY": self._REPO, "GH_TOKEN": "fake_token"}
+        with patch.dict(os.environ, env):
+            with self.assertRaises(RuntimeError) as cm:
+                project_sync.run()
+        self.assertIn("node_id", str(cm.exception).lower())
 
 
 if __name__ == "__main__":
