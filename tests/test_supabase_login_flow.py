@@ -62,6 +62,11 @@ class SupabaseLoginReadmeTest(unittest.TestCase):
         self.assertIn("email/password", content)
         self.assertIn("IDE access granted", content)
 
+    def test_readme_explains_window_based_frontend_configuration(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("window.__SUPABASE_URL__", content)
+        self.assertIn("window.__SUPABASE_ANON_KEY__", content)
+
 
 if __name__ == "__main__":
     unittest.main()
