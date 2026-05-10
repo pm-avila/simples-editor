@@ -1,0 +1,29 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+    expose:
+      - "8080"
+
+  backend:
+    build:
+      context: ./backend
+    expose:
+      - "5000"
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-http://localhost:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-changeme}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-changeme}
+      COMPILE_TIMEOUT: ${COMPILE_TIMEOUT:-10}
+      EXECUTION_TIMEOUT: ${EXECUTION_TIMEOUT:-5}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-python:3.12-slim}
