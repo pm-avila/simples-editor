@@ -396,7 +396,7 @@ class TestFindOrAddItemShapeValidation(unittest.TestCase):
     def test_raises_when_add_item_mutation_returns_null(self, mock_graphql):
         """addProjectV2ItemById returns null → explicit RuntimeError, not raw TypeError."""
         mock_graphql.side_effect = [
-            {"node": {"items": {"nodes": []}}},   # query: item not found
+            {"node": {"items": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}}},
             {"addProjectV2ItemById": None},         # mutation: null result
         ]
         with self.assertRaises(RuntimeError) as cm:
@@ -407,7 +407,7 @@ class TestFindOrAddItemShapeValidation(unittest.TestCase):
     def test_raises_when_add_item_mutation_item_is_null(self, mock_graphql):
         """addProjectV2ItemById.item is null → explicit RuntimeError, not raw TypeError."""
         mock_graphql.side_effect = [
-            {"node": {"items": {"nodes": []}}},        # query: item not found
+            {"node": {"items": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}}},
             {"addProjectV2ItemById": {"item": None}},  # mutation: item null
         ]
         with self.assertRaises(RuntimeError) as cm:
@@ -582,7 +582,7 @@ class TestFindOrAddItemIdFieldValidation(unittest.TestCase):
     def test_raises_when_mutation_item_lacks_id(self, mock_graphql):
         """Mutation returns item with no 'id' key → explicit RuntimeError, not raw KeyError."""
         mock_graphql.side_effect = [
-            {"node": {"items": {"nodes": []}}},                   # query: not found
+            {"node": {"items": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}}},
             {"addProjectV2ItemById": {"item": {"name": "x"}}},   # mutation: item without id
         ]
         with self.assertRaises(RuntimeError) as cm:
@@ -783,6 +783,149 @@ class TestRunIssueEventActiveLinkedPR(unittest.TestCase):
 
         mock_fetch_pr.assert_not_called()
         mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_done")
+
+
+class TestCloseKeywordVariants(unittest.TestCase):
+    """_extract_linked_issue_number and _fetch_linked_pr_for_issue must accept
+    all GitHub close-keyword variants: close/closed/fix/fixed/resolve/resolved."""
+
+    def _pr(self, body):
+        return {"state": "open", "draft": False, "body": body, "title": "t"}
+
+    # --- _extract_linked_issue_number ---
+
+    def test_extract_closed_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("Closed #3")), 3)
+
+    def test_extract_close_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("close #8")), 8)
+
+    def test_extract_fixed_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("Fixed #11")), 11)
+
+    def test_extract_fix_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("fix #2")), 2)
+
+    def test_extract_resolved_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("Resolved #15")), 15)
+
+    def test_extract_resolve_variant(self):
+        self.assertEqual(_extract_linked_issue_number(self._pr("resolve #9")), 9)
+
+    # --- _fetch_linked_pr_for_issue ---
+
+    def _api_pr(self, number, body):
+        return {"number": number, "state": "open", "draft": False, "body": body,
+                "title": f"PR #{number}", "node_id": f"PR_node_{number}"}
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_closed_variant(self, mock_api):
+        pr = self._api_pr(10, "Closed #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_close_variant(self, mock_api):
+        pr = self._api_pr(10, "close #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_fixed_variant(self, mock_api):
+        pr = self._api_pr(10, "Fixed #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_fix_variant(self, mock_api):
+        pr = self._api_pr(10, "fix #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_resolved_variant(self, mock_api):
+        pr = self._api_pr(10, "Resolved #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_fetch_pr_resolve_variant(self, mock_api):
+        pr = self._api_pr(10, "resolve #5")
+        mock_api.return_value = [pr]
+        self.assertEqual(_fetch_linked_pr_for_issue(5, "owner/repo")["number"], 10)
+
+
+class TestFindOrAddItemPagination(unittest.TestCase):
+    """_find_or_add_item must paginate over all Project items before adding."""
+
+    def _item(self, item_id, issue_id):
+        return {"id": item_id, "content": {"id": issue_id}}
+
+    def _page(self, nodes, has_next=False, cursor=None):
+        return {
+            "node": {
+                "items": {
+                    "nodes": nodes,
+                    "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
+                }
+            }
+        }
+
+    @patch("project_sync._graphql")
+    def test_finds_item_on_second_page(self, mock_graphql):
+        """Issue is on page 2 — must not add a duplicate, must return its item_id."""
+        page1 = self._page(
+            [self._item("item_other", "I_other")],
+            has_next=True,
+            cursor="cursor_abc",
+        )
+        page2 = self._page(
+            [self._item("item_target", "I_target")],
+            has_next=False,
+            cursor=None,
+        )
+        mock_graphql.side_effect = [page1, page2]
+        result = _find_or_add_item("P_id", "I_target")
+        self.assertEqual(result, "item_target")
+        # Must NOT have called mutation (add) since item was found
+        self.assertEqual(mock_graphql.call_count, 2)
+
+    @patch("project_sync._graphql")
+    def test_adds_item_after_exhausting_all_pages(self, mock_graphql):
+        """Issue absent on every page — must add after pagination ends."""
+        page1 = self._page(
+            [self._item("item_other", "I_other")],
+            has_next=True,
+            cursor="cursor_abc",
+        )
+        page2 = self._page([], has_next=False, cursor=None)
+        mutation_result = {"addProjectV2ItemById": {"item": {"id": "new_item"}}}
+        mock_graphql.side_effect = [page1, page2, mutation_result]
+        result = _find_or_add_item("P_id", "I_missing")
+        self.assertEqual(result, "new_item")
+        self.assertEqual(mock_graphql.call_count, 3)
+
+    @patch("project_sync._graphql")
+    def test_finds_item_on_first_page_single_call(self, mock_graphql):
+        """Issue found on page 1 — only one graphql call, no add."""
+        page1 = self._page(
+            [self._item("item_found", "I_found")],
+            has_next=True,   # more pages exist, but we should stop early
+            cursor="cursor_x",
+        )
+        mock_graphql.return_value = page1
+        result = _find_or_add_item("P_id", "I_found")
+        self.assertEqual(result, "item_found")
+        self.assertEqual(mock_graphql.call_count, 1)
+
+    @patch("project_sync._graphql")
+    def test_raises_when_page_info_missing(self, mock_graphql):
+        """Response with no pageInfo must raise RuntimeError, not AttributeError."""
+        mock_graphql.return_value = {
+            "node": {"items": {"nodes": [], "pageInfo": None}}
+        }
+        with self.assertRaises(RuntimeError):
+            _find_or_add_item("P_id", "I_target")
 
 
 if __name__ == "__main__":

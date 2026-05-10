@@ -167,14 +167,15 @@ mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
 """
 
 _GET_ITEM_Q = """
-query($projectId: ID!, $issueId: ID!) {
+query($projectId: ID!, $after: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: 100) {
+      items(first: 100, after: $after) {
         nodes {
           id
           content { ... on Issue { id } }
         }
+        pageInfo { hasNextPage endCursor }
       }
     }
   }
@@ -245,31 +246,42 @@ def _get_project_meta() -> tuple[str, str, dict[str, str]]:
 
 def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
     """Return the project item ID for the issue, adding it if absent."""
-    data = _graphql(_GET_ITEM_Q, {"projectId": project_id, "issueId": issue_node_id})
-    node = data.get("node")
-    if node is None:
-        raise RuntimeError(
-            f"GraphQL 'node' is null — project id {project_id!r} not found or not accessible"
-        )
-    items_wrap = node.get("items")
-    if items_wrap is None:
-        raise RuntimeError(
-            "GraphQL node has no 'items' — unexpected API response shape"
-        )
-    item_nodes = items_wrap.get("nodes")
-    if item_nodes is None:
-        raise RuntimeError(
-            "GraphQL items has no 'nodes' — unexpected API response shape"
-        )
-    for item in item_nodes:
-        content = item.get("content") or {}
-        if content.get("id") == issue_node_id:
-            item_id = item.get("id")
-            if not item_id:
-                raise RuntimeError(
-                    f"Project item matched issue but has no 'id' — unexpected API response shape: {item!r}"
-                )
-            return item_id
+    cursor = None
+    while True:
+        data = _graphql(_GET_ITEM_Q, {"projectId": project_id, "after": cursor})
+        node = data.get("node")
+        if node is None:
+            raise RuntimeError(
+                f"GraphQL 'node' is null — project id {project_id!r} not found or not accessible"
+            )
+        items_wrap = node.get("items")
+        if items_wrap is None:
+            raise RuntimeError(
+                "GraphQL node has no 'items' — unexpected API response shape"
+            )
+        item_nodes = items_wrap.get("nodes")
+        if item_nodes is None:
+            raise RuntimeError(
+                "GraphQL items has no 'nodes' — unexpected API response shape"
+            )
+        for item in item_nodes:
+            content = item.get("content") or {}
+            if content.get("id") == issue_node_id:
+                item_id = item.get("id")
+                if not item_id:
+                    raise RuntimeError(
+                        f"Project item matched issue but has no 'id' — unexpected API response shape: {item!r}"
+                    )
+                return item_id
+
+        page_info = items_wrap.get("pageInfo")
+        if page_info is None:
+            raise RuntimeError(
+                "GraphQL items has no 'pageInfo' — unexpected API response shape"
+            )
+        if not page_info.get("hasNextPage"):
+            break
+        cursor = page_info.get("endCursor")
 
     added = _graphql(_ADD_ITEM_Q, {"projectId": project_id, "contentId": issue_node_id})
     mutation_result = added.get("addProjectV2ItemById")
@@ -310,6 +322,14 @@ def _update_status(
 # Event parsing
 # ---------------------------------------------------------------------------
 
+# All GitHub close keywords (singular, plural, past tense).
+# https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
+_CLOSE_KW_RE = re.compile(
+    r"(?:clos(?:e|es|ed)|fix(?:es|ed)?|resolv(?:e|es|ed))\s+#(\d+)",
+    re.IGNORECASE,
+)
+
+
 def _load_event() -> dict:
     path = os.environ.get("GITHUB_EVENT_PATH")
     if not path:
@@ -321,19 +341,22 @@ def _load_event() -> dict:
 
 
 def _extract_linked_issue_number(pr: dict) -> int:
-    """Parse the first Closes/Fixes/Resolves #N reference from the PR body.
+    """Parse the first GitHub close-keyword #N reference from the PR body.
+
+    Recognises all supported variants: close/closes/closed, fix/fixes/fixed,
+    resolve/resolves/resolved (case-insensitive).
 
     Raises RuntimeError if the PR body contains no recognised linked-issue
     reference, since that makes it impossible to determine issue context for
     a pull_request event.
     """
     body = pr.get("body") or ""
-    pattern = re.compile(r"(?:closes|fixes|resolves)\s+#(\d+)", re.IGNORECASE)
-    match = pattern.search(body)
+    match = _CLOSE_KW_RE.search(body)
     if not match:
         raise RuntimeError(
             "pull_request payload has no linked issue reference "
-            "(expected 'Closes/Fixes/Resolves #N' in PR body)"
+            "(expected a GitHub close keyword followed by #N in PR body, "
+            "e.g. 'Closes #42', 'Fixed #7', 'Resolved #100')"
         )
     return int(match.group(1))
 
@@ -365,10 +388,9 @@ def _fetch_linked_pr_for_issue(issue_number: int, repo: str) -> dict | None:
     owner, name = parts
     url = f"https://api.github.com/repos/{owner}/{name}/pulls?state=open&per_page=100"
     prs = _api_request("GET", url)
-    pattern = re.compile(r"(?:closes|fixes|resolves)\s+#(\d+)", re.IGNORECASE)
     for pr in prs:
         body = pr.get("body") or ""
-        for match in pattern.finditer(body):
+        for match in _CLOSE_KW_RE.finditer(body):
             if int(match.group(1)) == issue_number:
                 return pr
     return None
