@@ -1,0 +1,9 @@
+project_id = "simples-editor"
+
+[auth]
+enabled = true
+site_url = "http://localhost"
+additional_redirect_urls = ["http://localhost"]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
