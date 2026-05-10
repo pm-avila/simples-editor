@@ -194,15 +194,31 @@ def _get_project_meta() -> tuple[str, str, dict[str, str]]:
         )
     project_id = project["id"]
 
+    fields = project.get("fields")
+    if fields is None:
+        raise RuntimeError(
+            "GraphQL response has no 'fields' on project — unexpected API response shape"
+        )
+    nodes = fields.get("nodes")
+    if nodes is None:
+        raise RuntimeError(
+            "GraphQL project 'fields' has no 'nodes' — unexpected API response shape"
+        )
+
     status_field = None
-    for field in project["fields"]["nodes"]:
+    for field in nodes:
         if field.get("name") == "Status":
             status_field = field
             break
     if status_field is None:
         raise RuntimeError("Status field not found in project")
 
-    options = {opt["name"]: opt["id"] for opt in status_field["options"]}
+    options_list = status_field.get("options")
+    if options_list is None:
+        raise RuntimeError(
+            "Status field has no 'options' key — unexpected field shape in API response"
+        )
+    options = {opt["name"]: opt["id"] for opt in options_list}
     return project_id, status_field["id"], options
 
 
@@ -214,7 +230,17 @@ def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
         raise RuntimeError(
             f"GraphQL 'node' is null — project id {project_id!r} not found or not accessible"
         )
-    for item in node["items"]["nodes"]:
+    items_wrap = node.get("items")
+    if items_wrap is None:
+        raise RuntimeError(
+            "GraphQL node has no 'items' — unexpected API response shape"
+        )
+    item_nodes = items_wrap.get("nodes")
+    if item_nodes is None:
+        raise RuntimeError(
+            "GraphQL items has no 'nodes' — unexpected API response shape"
+        )
+    for item in item_nodes:
         content = item.get("content") or {}
         if content.get("id") == issue_node_id:
             return item["id"]
@@ -226,7 +252,13 @@ def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
             "addProjectV2ItemById returned null — item was not added to the project "
             "(check project permissions and issue node id)"
         )
-    return mutation_result["item"]["id"]
+    item = mutation_result.get("item")
+    if item is None:
+        raise RuntimeError(
+            "addProjectV2ItemById returned null item — item was not created "
+            "(check project permissions and issue node id)"
+        )
+    return item["id"]
 
 
 def _update_status(

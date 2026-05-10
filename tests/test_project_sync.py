@@ -325,6 +325,41 @@ class TestGetProjectMetaShapeValidation(unittest.TestCase):
             _get_project_meta()
         self.assertIn("project", str(cm.exception).lower())
 
+    @patch("project_sync._graphql")
+    def test_raises_when_fields_is_null(self, mock_graphql):
+        """GraphQL returns fields: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"user": {"projectV2": {"id": "P_id", "fields": None}}}
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("fields", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_fields_nodes_is_null(self, mock_graphql):
+        """GraphQL returns fields.nodes: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {
+            "user": {"projectV2": {"id": "P_id", "fields": {"nodes": None}}}
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("fields", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_status_field_options_missing(self, mock_graphql):
+        """Status field lacks 'options' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "user": {
+                "projectV2": {
+                    "id": "P_id",
+                    "fields": {
+                        "nodes": [{"name": "Status"}]  # 'options' key absent
+                    },
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("options", str(cm.exception).lower())
+
 
 class TestFindOrAddItemShapeValidation(unittest.TestCase):
     """_find_or_add_item must raise RuntimeError on unexpected GraphQL response shapes."""
@@ -338,6 +373,22 @@ class TestFindOrAddItemShapeValidation(unittest.TestCase):
         self.assertIn("node", str(cm.exception).lower())
 
     @patch("project_sync._graphql")
+    def test_raises_when_node_items_is_null(self, mock_graphql):
+        """GraphQL returns node.items: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"node": {"items": None}}
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("items", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_node_items_nodes_is_null(self, mock_graphql):
+        """GraphQL returns node.items.nodes: null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.return_value = {"node": {"items": {"nodes": None}}}
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("nodes", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
     def test_raises_when_add_item_mutation_returns_null(self, mock_graphql):
         """addProjectV2ItemById returns null → explicit RuntimeError, not raw TypeError."""
         mock_graphql.side_effect = [
@@ -347,6 +398,17 @@ class TestFindOrAddItemShapeValidation(unittest.TestCase):
         with self.assertRaises(RuntimeError) as cm:
             _find_or_add_item("P_id", "I_node_1")
         self.assertIn("addprojectv2itembyid", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_add_item_mutation_item_is_null(self, mock_graphql):
+        """addProjectV2ItemById.item is null → explicit RuntimeError, not raw TypeError."""
+        mock_graphql.side_effect = [
+            {"node": {"items": {"nodes": []}}},        # query: item not found
+            {"addProjectV2ItemById": {"item": None}},  # mutation: item null
+        ]
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("item", str(cm.exception).lower())
 
 
 class TestRunNodeIdValidation(unittest.TestCase):
