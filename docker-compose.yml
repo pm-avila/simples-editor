@@ -14,8 +14,8 @@ services:
   frontend:
     build:
       context: ./frontend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     environment:
       SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dev-anon-key}
@@ -23,8 +23,8 @@ services:
   backend:
     build:
       context: ./backend
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dev-anon-key}

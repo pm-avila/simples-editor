@@ -3,7 +3,12 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 
 
-@app.route("/api/health")
+@app.route("/")
+def index():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/health")
 def health():
     return jsonify({"status": "ok"})
 

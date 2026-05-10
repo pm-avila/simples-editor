@@ -1,10 +1,10 @@
 import http.server
-import socketserver
+from http.server import ThreadingHTTPServer
 
 PORT = 8080
 
 Handler = http.server.SimpleHTTPRequestHandler
 
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
+with ThreadingHTTPServer(("", PORT), Handler) as httpd:
     print(f"Serving on port {PORT}")
     httpd.serve_forever()

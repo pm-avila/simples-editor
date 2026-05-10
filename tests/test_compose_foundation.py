@@ -13,6 +13,9 @@ import yaml
 COMPOSE_FILE = os.path.join(os.path.dirname(__file__), "..", "docker-compose.yml")
 ENV_EXAMPLE_FILE = os.path.join(os.path.dirname(__file__), "..", ".env.example")
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+NGINX_CONF_FILE = os.path.join(REPO_ROOT, "nginx", "default.conf")
+BACKEND_APP_FILE = os.path.join(REPO_ROOT, "backend", "app.py")
+FRONTEND_SERVER_FILE = os.path.join(REPO_ROOT, "frontend", "server.py")
 REQUIRED_SERVICES = {"nginx", "frontend", "backend"}
 REQUIRED_VARIABLES = {
     "SUPABASE_URL",
@@ -103,24 +106,58 @@ class ComposeFoundationTest(unittest.TestCase):
             "nginx service must mount nginx/default.conf via volumes.",
         )
 
-    # Task 2: frontend must be addressed on port 8080
-    def test_compose_frontend_routes_on_8080(self):
-        """frontend service must expose or map port 8080."""
+    # Finding 2: nginx is the sole host entry point — frontend/backend must NOT bind host ports
+    def test_frontend_has_no_host_port_binding(self):
+        """frontend must not bind host ports; all external traffic flows through nginx."""
         frontend = self.compose.get("services", {}).get("frontend", {})
         ports = frontend.get("ports", [])
-        self.assertTrue(
-            any("8080" in str(p) for p in ports),
-            "frontend service must expose port 8080.",
+        host_bindings = [p for p in ports if ":" in str(p)]
+        self.assertFalse(
+            host_bindings,
+            f"frontend must not bind host ports. Remove {host_bindings} from its 'ports' list.",
         )
 
-    # Task 2: backend must be addressed on port 5000
-    def test_compose_backend_routes_on_5000(self):
-        """backend service must expose or map port 5000."""
+    def test_backend_has_no_host_port_binding(self):
+        """backend must not bind host ports; all external traffic flows through nginx."""
         backend = self.compose.get("services", {}).get("backend", {})
         ports = backend.get("ports", [])
+        host_bindings = [p for p in ports if ":" in str(p)]
+        self.assertFalse(
+            host_bindings,
+            f"backend must not bind host ports. Remove {host_bindings} from its 'ports' list.",
+        )
+
+    def test_nginx_is_sole_host_entry_point_on_port_80(self):
+        """nginx must be the only service with a host-bound port (port 80)."""
+        nginx = self.compose.get("services", {}).get("nginx", {})
+        ports = nginx.get("ports", [])
         self.assertTrue(
-            any("5000" in str(p) for p in ports),
-            "backend service must expose port 5000.",
+            any("80" in str(p) for p in ports),
+            "nginx must expose port 80 to the host as the sole entry point.",
+        )
+
+    # Finding 1: nginx /api/ location must strip the prefix when forwarding to backend
+    def test_nginx_api_location_proxies_to_backend_root(self):
+        """nginx /api/ location must proxy_pass to http://backend:5000/ (trailing slash
+        causes nginx to strip the /api/ prefix before forwarding to the backend)."""
+        with open(NGINX_CONF_FILE, "r") as f:
+            content = f.read()
+        self.assertIn(
+            "proxy_pass http://backend:5000/",
+            content,
+            "nginx /api/ location must use 'proxy_pass http://backend:5000/' "
+            "(trailing slash strips the /api/ prefix).",
+        )
+
+    # Finding 1: backend must respond at its root path (GET /)
+    def test_backend_serves_root_path(self):
+        """backend/app.py must define a route at '/' so nginx-forwarded /api/ requests land correctly."""
+        with open(BACKEND_APP_FILE, "r") as f:
+            content = f.read()
+        self.assertIn(
+            '@app.route("/")',
+            content,
+            "backend/app.py must define a route at '/' (nginx strips /api/ before forwarding).",
         )
 
     # Finding 2: env var refs must carry safe :-defaults
@@ -182,6 +219,17 @@ class ServiceSkeletonFilesTest(unittest.TestCase):
         self.assertTrue(
             os.path.isfile(self._path("nginx", "default.conf")),
             "nginx/default.conf must exist",
+        )
+
+    # Finding 4: frontend/server.py must use ThreadingHTTPServer
+    def test_frontend_server_uses_threading_http_server(self):
+        """frontend/server.py must use ThreadingHTTPServer for concurrent request handling."""
+        with open(FRONTEND_SERVER_FILE, "r") as f:
+            content = f.read()
+        self.assertIn(
+            "ThreadingHTTPServer",
+            content,
+            "frontend/server.py must use ThreadingHTTPServer (not TCPServer).",
         )
 
 
