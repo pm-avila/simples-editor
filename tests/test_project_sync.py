@@ -927,6 +927,16 @@ class TestFindOrAddItemPagination(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             _find_or_add_item("P_id", "I_target")
 
+    @patch("project_sync._graphql")
+    def test_raises_when_has_next_page_but_end_cursor_is_null(self, mock_graphql):
+        """hasNextPage=true with endCursor=None must raise RuntimeError to prevent infinite loop."""
+        mock_graphql.return_value = {
+            "node": {"items": {"nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": None}}}
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_target")
+        self.assertIn("endcursor", str(cm.exception).lower())
+
 
 if __name__ == "__main__":
     unittest.main()

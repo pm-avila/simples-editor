@@ -282,6 +282,11 @@ def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
         if not page_info.get("hasNextPage"):
             break
         cursor = page_info.get("endCursor")
+        if not cursor:
+            raise RuntimeError(
+                "GraphQL pageInfo has hasNextPage=true but endCursor is null/empty "
+                "— unexpected API response shape"
+            )
 
     added = _graphql(_ADD_ITEM_Q, {"projectId": project_id, "contentId": issue_node_id})
     mutation_result = added.get("addProjectV2ItemById")
