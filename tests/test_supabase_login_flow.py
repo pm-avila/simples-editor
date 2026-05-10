@@ -22,6 +22,10 @@ class SupabaseLoginUiTest(unittest.TestCase):
         self.assertIn('id="ide-shell"', content)
         self.assertIn("IDE access granted", content)
 
+    def test_login_page_includes_login_shell_marker(self):
+        content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="login-shell"', content)
+
     def test_public_frontend_config_exposes_supabase_url_and_anon_key(self):
         content = (ROOT / "frontend" / "config.js").read_text(encoding="utf-8")
         self.assertIn("SUPABASE_URL", content)
