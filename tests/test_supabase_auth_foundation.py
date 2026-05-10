@@ -78,3 +78,15 @@ class BackendAuthConfigTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadmeSupabaseAuthFoundationTest(unittest.TestCase):
+    def test_readme_documents_supabase_auth_foundation(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Supabase", content)
+        self.assertIn(".env.example", content)
+        self.assertIn("SUPABASE_URL", content)
+        self.assertIn("SUPABASE_JWT_SECRET", content)
+        self.assertIn("auth.users", content)
+        self.assertIn("JWT", content)
+        self.assertIn("without querying the database", content)
