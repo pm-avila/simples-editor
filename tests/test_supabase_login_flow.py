@@ -22,9 +22,9 @@ class SupabaseLoginUiTest(unittest.TestCase):
         self.assertIn('id="ide-shell"', content)
         self.assertIn("IDE access granted", content)
 
-    def test_login_page_includes_login_shell_marker(self):
+    def test_login_page_includes_login_screen_marker(self):
         content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('id="login-shell"', content)
+        self.assertIn('id="login-screen"', content)
 
     def test_login_page_script_has_matching_file(self):
         content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
