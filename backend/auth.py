@@ -25,7 +25,10 @@ def _extract_bearer_token(request):
     prefix = "Bearer "
     if not header.startswith(prefix):
         raise AuthError("missing bearer token")
-    return header[len(prefix):]
+    token = header[len(prefix):].strip()
+    if not token:
+        raise AuthError("missing bearer token")
+    return token
 
 
 def verify_jwt(jwt_secret):

@@ -77,6 +77,16 @@ class BackendVerifyJwtDecoratorTest(unittest.TestCase):
         with self.assertRaises(self.module.AuthError):
             handler(request)
 
+    def test_verify_jwt_rejects_empty_bearer_token(self):
+        request = FakeRequest(headers={"Authorization": "Bearer "})
+
+        @self.module.verify_jwt("secret")
+        def handler(current_request):
+            return current_request.user_id
+
+        with self.assertRaisesRegex(self.module.AuthError, "missing bearer token"):
+            handler(request)
+
     def test_verify_jwt_injects_user_id_from_sub_claim(self):
         token = jwt.encode({"sub": "user-123"}, "secret", algorithm="HS256")
         request = FakeRequest(headers={"Authorization": f"Bearer {token}"})
