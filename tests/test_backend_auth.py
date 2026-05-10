@@ -23,10 +23,6 @@ class BackendAuthFoundationTest(unittest.TestCase):
         self.assertIn("PyJWT==", content)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BackendJwtCoreTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -41,9 +37,17 @@ class BackendJwtCoreTest(unittest.TestCase):
         claims = self.module.decode_supabase_jwt(token, "secret")
         self.assertEqual(claims["sub"], "user-123")
 
+    def test_decode_supabase_jwt_rejects_invalid_token(self):
+        with self.assertRaisesRegex(self.module.AuthError, "invalid token"):
+            self.module.decode_supabase_jwt("not-a-jwt", "secret")
+
     def test_extract_user_id_returns_sub(self):
         self.assertEqual(self.module.extract_user_id({"sub": "user-123"}), "user-123")
 
     def test_extract_user_id_rejects_missing_sub(self):
         with self.assertRaises(self.module.AuthError):
             self.module.extract_user_id({})
+
+
+if __name__ == "__main__":
+    unittest.main()
