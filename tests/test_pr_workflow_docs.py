@@ -27,5 +27,15 @@ class PrWorkflowDocsFoundationTest(unittest.TestCase):
         self.assertIn("dev", content)
 
 
+class PrWorkflowEvidenceTest(unittest.TestCase):
+    def test_pr_evidence_records_merged_pull_request(self):
+        content = (ROOT / "docs" / "pr-evidence.md").read_text(encoding="utf-8")
+        self.assertIn("pm-avila", content)
+        self.assertIn("#48", content)
+        self.assertIn("feat/1", content)
+        self.assertIn("dev", content)
+        self.assertIn("MERGED", content)
+
+
 if __name__ == "__main__":
     unittest.main()
