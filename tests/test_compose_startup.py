@@ -36,6 +36,7 @@ FRONTEND_SERVER = os.path.join(REPO_ROOT, "frontend", "server.py")
 BACKEND_DOCKERFILE = os.path.join(REPO_ROOT, "backend", "Dockerfile")
 BACKEND_REQUIREMENTS = os.path.join(REPO_ROOT, "backend", "requirements.txt")
 BACKEND_APP = os.path.join(REPO_ROOT, "backend", "app.py")
+README_FILE = os.path.join(REPO_ROOT, "README.md")
 
 REQUIRED_ENV_KEYS = {
     "SUPABASE_URL",
@@ -501,6 +502,28 @@ class BackendRootRouteContractTest(unittest.TestCase):
         values = [v.value for v in payload.values if isinstance(v, ast.Constant)]
         self.assertEqual(keys, ["status"], "route '/' payload must have only the key 'status'")
         self.assertEqual(values, ["ok"], "route '/' payload must carry the value 'ok'")
+
+
+class ReadmeStartupFlowTest(unittest.TestCase):
+    """Task 3 — README must describe the real local docker compose startup flow."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(README_FILE) as f:
+            cls.src = f.read()
+
+    def test_readme_documents_real_local_startup_flow(self):
+        for required in (
+            "docker compose up --build",
+            "http://localhost",
+            ".env.example",
+            "nginx",
+        ):
+            self.assertIn(
+                required,
+                self.src,
+                f"README.md must mention '{required}' in the local startup instructions",
+            )
 
 
 if __name__ == "__main__":
