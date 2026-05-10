@@ -257,5 +257,83 @@ class EnvExampleTest(unittest.TestCase):
         )
 
 
+# Task 3: README must document the real compose scaffold
+README_FILE = os.path.join(REPO_ROOT, "README.md")
+
+README_REQUIRED_MENTIONS = [
+    "docker-compose.yml",
+    ".env.example",
+    "nginx/default.conf",
+    "frontend/",
+    "backend/",
+    "docker compose up --build",
+    "nginx",
+]
+
+
+class ReadmeDocumentationTest(unittest.TestCase):
+    """Task 3 (Issue #3): README must document the real compose scaffold."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(README_FILE, "r") as f:
+            cls.readme = f.read()
+
+    def test_readme_mentions_docker_compose_yml(self):
+        self.assertIn(
+            "docker-compose.yml",
+            self.readme,
+            "README must mention docker-compose.yml",
+        )
+
+    def test_readme_mentions_env_example(self):
+        self.assertIn(
+            ".env.example",
+            self.readme,
+            "README must mention .env.example",
+        )
+
+    def test_readme_mentions_nginx_default_conf(self):
+        self.assertIn(
+            "nginx/default.conf",
+            self.readme,
+            "README must mention nginx/default.conf",
+        )
+
+    def test_readme_mentions_frontend_directory(self):
+        self.assertIn(
+            "frontend/",
+            self.readme,
+            "README must mention frontend/",
+        )
+
+    def test_readme_mentions_backend_directory(self):
+        self.assertIn(
+            "backend/",
+            self.readme,
+            "README must mention backend/",
+        )
+
+    def test_readme_mentions_docker_compose_up_build(self):
+        self.assertIn(
+            "docker compose up --build",
+            self.readme,
+            "README must include the real local dev command: docker compose up --build",
+        )
+
+    def test_readme_mentions_nginx_as_entry_point(self):
+        """README must describe nginx as the single entry point."""
+        content_lower = self.readme.lower()
+        self.assertIn(
+            "nginx",
+            content_lower,
+            "README must mention nginx as the entry point",
+        )
+        self.assertTrue(
+            "entry point" in content_lower or "porta 80" in content_lower or "port 80" in content_lower,
+            "README must describe nginx as the single/sole entry point on port 80",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
