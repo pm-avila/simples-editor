@@ -53,5 +53,15 @@ class SupabaseLoginFlowScriptTest(unittest.TestCase):
         self.assertIn(".hidden", content.replace(" ", ""))
 
 
+class SupabaseLoginReadmeTest(unittest.TestCase):
+    def test_readme_documents_frontend_login_setup(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Supabase login", content)
+        self.assertIn("SUPABASE_URL", content)
+        self.assertIn("SUPABASE_ANON_KEY", content)
+        self.assertIn("email/password", content)
+        self.assertIn("IDE access granted", content)
+
+
 if __name__ == "__main__":
     unittest.main()
