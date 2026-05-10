@@ -61,5 +61,15 @@ class HealthEndpointContractTest(unittest.TestCase):
         self.assertEqual(response.get_json()["service"], "backend")
 
 
+class HealthEndpointReadmeTest(unittest.TestCase):
+    def test_readme_documents_public_health_check(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("/api/health", content)
+        self.assertIn("GET", content)
+        self.assertIn("status", content)
+        self.assertIn("ok", content)
+        self.assertIn("without JWT", content)
+
+
 if __name__ == "__main__":
     unittest.main()
