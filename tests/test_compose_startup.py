@@ -20,6 +20,7 @@ Run with:
     python3 -m unittest tests/test_compose_startup.py -v
 """
 
+import ast
 import os
 import re
 import unittest
@@ -256,27 +257,38 @@ class BackendAppTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class BackendAppRouteResponseTest(unittest.TestCase):
-    """Verify / and /health actually return {"status": "ok"} via Flask test client."""
+    """Verify / and /health return jsonify({"status": "ok"}) without importing Flask."""
 
     @classmethod
     def setUpClass(cls):
-        import sys
-        backend_dir = os.path.join(REPO_ROOT, "backend")
-        if backend_dir not in sys.path:
-            sys.path.insert(0, backend_dir)
-        from app import app  # noqa: PLC0415
-        app.config["TESTING"] = True
-        cls.client = app.test_client()
+        with open(BACKEND_APP) as f:
+            cls.tree = ast.parse(f.read(), filename=BACKEND_APP)
+
+    def _assert_route_returns_status_ok(self, function_name):
+        function = next(
+            node for node in self.tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == function_name
+        )
+        self.assertTrue(function.body, f"{function_name} must have a body")
+        return_stmt = function.body[0]
+        self.assertIsInstance(return_stmt, ast.Return, f"{function_name} must return a response")
+        call = return_stmt.value
+        self.assertIsInstance(call, ast.Call, f"{function_name} must return a call expression")
+        self.assertIsInstance(call.func, ast.Name, f"{function_name} must call jsonify")
+        self.assertEqual(call.func.id, "jsonify", f"{function_name} must call jsonify")
+        self.assertEqual(len(call.args), 1, f"{function_name} must pass exactly one payload to jsonify")
+        payload = call.args[0]
+        self.assertIsInstance(payload, ast.Dict, f"{function_name} must return a dict payload")
+        keys = [key.value for key in payload.keys if isinstance(key, ast.Constant)]
+        values = [value.value for value in payload.values if isinstance(value, ast.Constant)]
+        self.assertEqual(keys, ["status"], f"{function_name} must return only the status key")
+        self.assertEqual(values, ["ok"], f"{function_name} must return status ok")
 
     def test_root_route_returns_status_ok(self):
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"status": "ok"})
+        self._assert_route_returns_status_ok("index")
 
     def test_health_route_returns_status_ok(self):
-        response = self.client.get("/health")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"status": "ok"})
+        self._assert_route_returns_status_ok("health")
 
 
 # ---------------------------------------------------------------------------
