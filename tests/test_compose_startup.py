@@ -23,6 +23,7 @@ Run with:
 import ast
 import os
 import re
+import sys
 import unittest
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -314,6 +315,120 @@ class NginxConfTest(unittest.TestCase):
             "proxy_pass http://backend:5000/",
             self.src,
             "nginx /api/ location must proxy_pass to http://backend:5000/ (trailing slash strips prefix)",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Task 2: Operational startup topology contract
+# ---------------------------------------------------------------------------
+
+class NginxEntryPointContractTest(unittest.TestCase):
+    """Task 2 — nginx must be the single host entry point in docker-compose.yml."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(COMPOSE_FILE) as f:
+            cls.raw = f.read()
+
+    def _all_service_names(self):
+        """Return all top-level service names from the compose file."""
+        in_services = False
+        names = []
+        for line in self.raw.splitlines():
+            if re.match(r"^services\s*:", line):
+                in_services = True
+                continue
+            if in_services:
+                m = re.match(r"^  (\w[\w-]*)\s*:", line)
+                if m:
+                    names.append(m.group(1))
+        return names
+
+    def test_nginx_is_the_only_service_with_host_port_bindings(self):
+        """Only nginx may bind host ports; every other service must use expose."""
+        for name in self._all_service_names():
+            block = _service_block(self.raw, name)
+            host_bindings = re.findall(r"-\s+[\"']?\d+:\d+[\"']?", block)
+            if name == "nginx":
+                self.assertTrue(
+                    host_bindings,
+                    "nginx must have at least one host port binding (80:80)",
+                )
+            else:
+                self.assertFalse(
+                    host_bindings,
+                    f"service '{name}' must not bind host ports — all traffic must flow through nginx: {host_bindings}",
+                )
+
+    def test_nginx_conf_listen_directive_is_port_80(self):
+        with open(NGINX_CONF) as f:
+            conf = f.read()
+        self.assertRegex(
+            conf,
+            r"\blisten\s+80\s*;",
+            "nginx/default.conf must declare 'listen 80;'",
+        )
+
+
+class NginxRoutingContractTest(unittest.TestCase):
+    """Task 2 — nginx location blocks must proxy to the correct upstreams."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(NGINX_CONF) as f:
+            cls.src = f.read()
+
+    def test_root_location_block_proxies_to_frontend(self):
+        self.assertRegex(
+            self.src,
+            r"location\s+/\s*\{[^}]*proxy_pass\s+http://frontend:8080",
+            "nginx 'location /' block must proxy_pass to http://frontend:8080",
+        )
+
+    def test_api_location_block_proxies_to_backend_with_trailing_slash(self):
+        self.assertRegex(
+            self.src,
+            r"location\s+/api/\s*\{[^}]*proxy_pass\s+http://backend:5000/",
+            "nginx 'location /api/' block must proxy_pass to http://backend:5000/ (trailing slash strips /api/ prefix)",
+        )
+
+
+class BackendRootRouteContractTest(unittest.TestCase):
+    """Task 2 — backend '/' route must serve {"status": "ok"} for the nginx /api/ proxy."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+
+        # Make the project venv available so Flask can be imported from backend/app.py.
+        venv_lib = os.path.join(REPO_ROOT, ".venv", "lib")
+        if os.path.isdir(venv_lib):
+            for entry in os.listdir(venv_lib):
+                if entry.startswith("python"):
+                    sp = os.path.join(venv_lib, entry, "site-packages")
+                    if os.path.isdir(sp) and sp not in sys.path:
+                        sys.path.insert(0, sp)
+
+        spec = importlib.util.spec_from_file_location("backend_app", BACKEND_APP)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.client = module.app.test_client()
+
+    def test_backend_root_returns_http_200(self):
+        response = self.client.get("/")
+        self.assertEqual(
+            response.status_code,
+            200,
+            "backend GET / must return HTTP 200",
+        )
+
+    def test_backend_root_returns_status_ok_json(self):
+        response = self.client.get("/")
+        data = response.get_json()
+        self.assertEqual(
+            data,
+            {"status": "ok"},
+            'backend GET / must return JSON body {"status": "ok"}',
         )
 
 
