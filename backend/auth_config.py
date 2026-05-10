@@ -1,0 +1,25 @@
+from dataclasses import dataclass
+import os
+
+
+@dataclass(frozen=True)
+class SupabaseAuthConfig:
+    url: str
+    anon_key: str
+    jwt_secret: str
+
+
+def load_supabase_auth_config(env=None):
+    source = os.environ if env is None else env
+    return SupabaseAuthConfig(
+        url=source["SUPABASE_URL"],
+        anon_key=source["SUPABASE_ANON_KEY"],
+        jwt_secret=source["SUPABASE_JWT_SECRET"],
+    )
+
+
+def auth_model_summary():
+    return (
+        "Supabase v1 uses auth.users as the identity source, and the backend validates "
+        "JWT locally without querying the database."
+    )

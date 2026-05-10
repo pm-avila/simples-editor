@@ -1,5 +1,6 @@
 import pathlib
 import unittest
+import importlib.util
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -45,6 +46,34 @@ class SupabaseFoundationFilesTest(unittest.TestCase):
     def test_backend_requirements_prepare_local_jwt_validation(self):
         content = (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8")
         self.assertIn("PyJWT==", content)
+
+
+class BackendAuthConfigTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        module_path = ROOT / "backend" / "auth_config.py"
+        spec = importlib.util.spec_from_file_location("backend.auth_config", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.module = module
+
+    def test_load_supabase_auth_config_returns_expected_fields(self):
+        config = self.module.load_supabase_auth_config(
+            {
+                "SUPABASE_URL": "https://demo.supabase.co",
+                "SUPABASE_ANON_KEY": "anon",
+                "SUPABASE_JWT_SECRET": "secret",
+            }
+        )
+        self.assertEqual(config.url, "https://demo.supabase.co")
+        self.assertEqual(config.anon_key, "anon")
+        self.assertEqual(config.jwt_secret, "secret")
+
+    def test_auth_model_summary_explains_local_jwt_validation(self):
+        summary = self.module.auth_model_summary()
+        self.assertIn("auth.users", summary)
+        self.assertIn("JWT", summary)
+        self.assertIn("without querying the database", summary)
 
 
 if __name__ == "__main__":
