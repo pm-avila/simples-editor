@@ -91,9 +91,11 @@ class BackendVerifyJwtDecoratorTest(unittest.TestCase):
 class BackendJwtReadmeTest(unittest.TestCase):
     def test_readme_documents_backend_jwt_validation(self):
         content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## Backend JWT validation", content)
         self.assertIn("verify_jwt", content)
         self.assertIn("SUPABASE_JWT_SECRET", content)
         self.assertIn("sub", content)
+        self.assertIn("user_id", content)
         self.assertIn("JWT", content)
         self.assertIn("without querying the database", content)
 
