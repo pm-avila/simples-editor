@@ -1,9 +1,10 @@
 """Tests for project_sync.py - Sprint 1 kanban automation core."""
 
+import json
 import sys
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
@@ -13,6 +14,7 @@ from project_sync import (
     _extract_linked_issue_number,
     _get_project_meta,
     _find_or_add_item,
+    _graphql,
 )
 
 
@@ -444,6 +446,145 @@ class TestRunNodeIdValidation(unittest.TestCase):
             with self.assertRaises(RuntimeError) as cm:
                 project_sync.run()
         self.assertIn("node_id", str(cm.exception).lower())
+
+
+class TestGraphQLMissingDataKey(unittest.TestCase):
+    """_graphql must raise RuntimeError when the JSON response lacks a 'data' key."""
+
+    @patch("urllib.request.urlopen")
+    @patch("project_sync._gh_token", return_value="fake_token")
+    def test_raises_when_response_has_no_data_key(self, mock_token, mock_urlopen):
+        """GraphQL JSON without 'data' key → explicit RuntimeError, not raw KeyError."""
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=ctx)
+        ctx.__exit__ = MagicMock(return_value=False)
+        ctx.read.return_value = json.dumps({"status": "ok"}).encode()
+        mock_urlopen.return_value = ctx
+        with self.assertRaises(RuntimeError) as cm:
+            _graphql("query { viewer { login } }")
+        self.assertIn("data", str(cm.exception).lower())
+
+
+class TestGetProjectMetaIdFieldValidation(unittest.TestCase):
+    """_get_project_meta must raise RuntimeError when 'id' fields are missing in API response."""
+
+    @patch("project_sync._graphql")
+    def test_raises_when_project_id_missing(self, mock_graphql):
+        """projectV2 node has no 'id' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "user": {
+                "projectV2": {
+                    # 'id' key deliberately absent
+                    "fields": {"nodes": []},
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("id", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_status_field_id_missing(self, mock_graphql):
+        """Status field has no 'id' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "user": {
+                "projectV2": {
+                    "id": "P_id",
+                    "fields": {
+                        "nodes": [
+                            {
+                                # 'id' key deliberately absent from status field
+                                "name": "Status",
+                                "options": [{"name": "Backlog", "id": "opt1"}],
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("id", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_option_missing_id(self, mock_graphql):
+        """Option in Status field has no 'id' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "user": {
+                "projectV2": {
+                    "id": "P_id",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "F_id",
+                                "name": "Status",
+                                "options": [{"name": "Backlog"}],  # 'id' absent
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("option", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_option_missing_name(self, mock_graphql):
+        """Option in Status field has no 'name' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "user": {
+                "projectV2": {
+                    "id": "P_id",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "F_id",
+                                "name": "Status",
+                                "options": [{"id": "opt1"}],  # 'name' absent
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _get_project_meta()
+        self.assertIn("option", str(cm.exception).lower())
+
+
+class TestFindOrAddItemIdFieldValidation(unittest.TestCase):
+    """_find_or_add_item must raise RuntimeError when item 'id' is missing in API response."""
+
+    @patch("project_sync._graphql")
+    def test_raises_when_existing_item_lacks_id(self, mock_graphql):
+        """Matching item in project has no 'id' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.return_value = {
+            "node": {
+                "items": {
+                    "nodes": [
+                        {
+                            # 'id' key deliberately absent
+                            "content": {"id": "I_node_1"},
+                        }
+                    ]
+                }
+            }
+        }
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("id", str(cm.exception).lower())
+
+    @patch("project_sync._graphql")
+    def test_raises_when_mutation_item_lacks_id(self, mock_graphql):
+        """Mutation returns item with no 'id' key → explicit RuntimeError, not raw KeyError."""
+        mock_graphql.side_effect = [
+            {"node": {"items": {"nodes": []}}},                   # query: not found
+            {"addProjectV2ItemById": {"item": {"name": "x"}}},   # mutation: item without id
+        ]
+        with self.assertRaises(RuntimeError) as cm:
+            _find_or_add_item("P_id", "I_node_1")
+        self.assertIn("id", str(cm.exception).lower())
 
 
 if __name__ == "__main__":

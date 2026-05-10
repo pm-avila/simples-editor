@@ -112,6 +112,10 @@ def _graphql(query: str, variables: dict | None = None) -> dict:
 
     if "errors" in result:
         raise RuntimeError(f"GraphQL errors: {result['errors']}")
+    if "data" not in result:
+        raise RuntimeError(
+            f"GraphQL response missing 'data' key — unexpected response shape: {result!r}"
+        )
     return result["data"]
 
 
@@ -192,7 +196,11 @@ def _get_project_meta() -> tuple[str, str, dict[str, str]]:
             f"Project {PROJECT_NUMBER} not found for user {PROJECT_OWNER!r} "
             "— verify PROJECT_NUMBER and repository ownership"
         )
-    project_id = project["id"]
+    project_id = project.get("id")
+    if not project_id:
+        raise RuntimeError(
+            "GraphQL projectV2 response missing 'id' — unexpected API response shape"
+        )
 
     fields = project.get("fields")
     if fields is None:
@@ -218,8 +226,21 @@ def _get_project_meta() -> tuple[str, str, dict[str, str]]:
         raise RuntimeError(
             "Status field has no 'options' key — unexpected field shape in API response"
         )
-    options = {opt["name"]: opt["id"] for opt in options_list}
-    return project_id, status_field["id"], options
+    options = {}
+    for opt in options_list:
+        opt_name = opt.get("name")
+        opt_id = opt.get("id")
+        if opt_name is None or opt_id is None:
+            raise RuntimeError(
+                f"Status field option missing 'name' or 'id' — unexpected API response shape: {opt!r}"
+            )
+        options[opt_name] = opt_id
+    field_id = status_field.get("id")
+    if not field_id:
+        raise RuntimeError(
+            "Status field missing 'id' — unexpected API response shape"
+        )
+    return project_id, field_id, options
 
 
 def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
@@ -243,7 +264,12 @@ def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
     for item in item_nodes:
         content = item.get("content") or {}
         if content.get("id") == issue_node_id:
-            return item["id"]
+            item_id = item.get("id")
+            if not item_id:
+                raise RuntimeError(
+                    f"Project item matched issue but has no 'id' — unexpected API response shape: {item!r}"
+                )
+            return item_id
 
     added = _graphql(_ADD_ITEM_Q, {"projectId": project_id, "contentId": issue_node_id})
     mutation_result = added.get("addProjectV2ItemById")
@@ -258,7 +284,12 @@ def _find_or_add_item(project_id: str, issue_node_id: str) -> str:
             "addProjectV2ItemById returned null item — item was not created "
             "(check project permissions and issue node id)"
         )
-    return item["id"]
+    item_id = item.get("id")
+    if not item_id:
+        raise RuntimeError(
+            "addProjectV2ItemById returned item with no 'id' — unexpected API response shape"
+        )
+    return item_id
 
 
 def _update_status(
