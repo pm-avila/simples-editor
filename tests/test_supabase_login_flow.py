@@ -37,5 +37,21 @@ class SupabaseLoginUiTest(unittest.TestCase):
         self.assertIn("SUPABASE_ANON_KEY", content)
 
 
+class SupabaseLoginFlowScriptTest(unittest.TestCase):
+    def test_app_js_uses_supabase_client_and_password_sign_in(self):
+        content = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("createClient", content)
+        self.assertIn("signInWithPassword", content)
+        self.assertIn("SUPABASE_URL", content)
+        self.assertIn("SUPABASE_ANON_KEY", content)
+
+    def test_app_js_restores_session_and_reveals_ide_shell(self):
+        content = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("getSession", content)
+        self.assertIn("login-form", content)
+        self.assertIn("ide-shell", content)
+        self.assertIn(".hidden", content.replace(" ", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
