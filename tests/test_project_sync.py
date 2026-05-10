@@ -15,6 +15,7 @@ from project_sync import (
     _get_project_meta,
     _find_or_add_item,
     _graphql,
+    _fetch_linked_pr_for_issue,
 )
 
 
@@ -179,9 +180,10 @@ class TestRun(unittest.TestCase):
     @patch("project_sync._update_status")
     @patch("project_sync._find_or_add_item", return_value="item_id")
     @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_linked_pr_for_issue", return_value=None)
     @patch("project_sync._load_event")
     def test_run_issue_event_open_issue_gives_backlog(
-        self, mock_load, mock_meta, mock_find, mock_update
+        self, mock_load, mock_fetch_pr, mock_meta, mock_find, mock_update
     ):
         """issue event with open Sprint-1 issue and no PR → Backlog."""
         mock_load.return_value = {"issue": self._sprint1_issue()}
@@ -433,9 +435,10 @@ class TestRunNodeIdValidation(unittest.TestCase):
             # node_id deliberately absent
         }
 
+    @patch("project_sync._fetch_linked_pr_for_issue", return_value=None)
     @patch("project_sync._get_project_meta")
     @patch("project_sync._load_event")
-    def test_run_raises_when_issue_missing_node_id(self, mock_load, mock_meta):
+    def test_run_raises_when_issue_missing_node_id(self, mock_load, mock_meta, mock_fetch_pr):
         """Sprint-1 issue missing node_id → explicit RuntimeError instead of raw KeyError."""
         mock_load.return_value = {"issue": self._sprint1_issue_no_node_id()}
         mock_meta.return_value = self._PROJECT_META
@@ -585,6 +588,201 @@ class TestFindOrAddItemIdFieldValidation(unittest.TestCase):
         with self.assertRaises(RuntimeError) as cm:
             _find_or_add_item("P_id", "I_node_1")
         self.assertIn("id", str(cm.exception).lower())
+
+
+class TestFetchLinkedPrForIssue(unittest.TestCase):
+    """Unit tests for _fetch_linked_pr_for_issue."""
+
+    def _pr(self, number, body, draft=False):
+        return {
+            "number": number,
+            "state": "open",
+            "draft": draft,
+            "body": body,
+            "title": f"PR #{number}",
+            "node_id": f"PR_node_{number}",
+        }
+
+    @patch("project_sync._api_request")
+    def test_returns_none_when_no_open_prs(self, mock_api):
+        mock_api.return_value = []
+        result = _fetch_linked_pr_for_issue(1, "owner/repo")
+        self.assertIsNone(result)
+
+    @patch("project_sync._api_request")
+    def test_returns_none_when_no_pr_references_issue(self, mock_api):
+        mock_api.return_value = [self._pr(10, "General refactor, no linked issue")]
+        result = _fetch_linked_pr_for_issue(1, "owner/repo")
+        self.assertIsNone(result)
+
+    @patch("project_sync._api_request")
+    def test_returns_pr_when_closes_references_issue(self, mock_api):
+        pr = self._pr(10, "Closes #5")
+        mock_api.return_value = [pr]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertEqual(result["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_returns_pr_when_fixes_references_issue(self, mock_api):
+        pr = self._pr(10, "Fixes #5")
+        mock_api.return_value = [pr]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertEqual(result["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_returns_pr_when_resolves_references_issue(self, mock_api):
+        pr = self._pr(10, "Resolves #5")
+        mock_api.return_value = [pr]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertEqual(result["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_returns_first_matching_pr_when_multiple_match(self, mock_api):
+        mock_api.return_value = [
+            self._pr(10, "Closes #5"),
+            self._pr(11, "Fixes #5"),
+        ]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertEqual(result["number"], 10)
+
+    @patch("project_sync._api_request")
+    def test_returned_pr_preserves_draft_field(self, mock_api):
+        pr = self._pr(10, "Closes #5", draft=True)
+        mock_api.return_value = [pr]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertIsNotNone(result)
+        self.assertTrue(result["draft"])
+
+    @patch("project_sync._api_request")
+    def test_does_not_match_pr_referencing_different_issue(self, mock_api):
+        mock_api.return_value = [self._pr(10, "Closes #99")]
+        result = _fetch_linked_pr_for_issue(5, "owner/repo")
+        self.assertIsNone(result)
+
+    @patch("project_sync._api_request")
+    def test_raises_on_invalid_repo_format(self, mock_api):
+        with self.assertRaises(RuntimeError):
+            _fetch_linked_pr_for_issue(1, "bad-repo-no-slash")
+
+
+class TestRunIssueEventActiveLinkedPR(unittest.TestCase):
+    """run() must not downgrade status when an open Sprint-1 issue has an active linked PR."""
+
+    _REPO = "pm-avila/test-repo"
+    _PROJECT_META = ("P_id", "F_id", {
+        "Backlog": "opt_backlog",
+        "In progress": "opt_in_progress",
+        "In review": "opt_in_review",
+        "Done": "opt_done",
+    })
+
+    def _sprint1_issue(self, number=1, state="open", node_id="I_node_1"):
+        return {
+            "number": number,
+            "state": state,
+            "node_id": node_id,
+            "labels": [{"name": "sprint-1"}],
+            "milestone": None,
+        }
+
+    def _active_ready_pr(self, issue_number=1):
+        return {
+            "number": 10,
+            "state": "open",
+            "draft": False,
+            "body": f"Closes #{issue_number}",
+            "title": "fix: something",
+            "node_id": "PR_node_10",
+        }
+
+    def _active_draft_pr(self, issue_number=1):
+        return {
+            "number": 10,
+            "state": "open",
+            "draft": True,
+            "body": f"Closes #{issue_number}",
+            "title": "fix: something",
+            "node_id": "PR_node_10",
+        }
+
+    def _env(self):
+        return {"GITHUB_REPOSITORY": self._REPO, "GH_TOKEN": "fake_token"}
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_linked_pr_for_issue")
+    @patch("project_sync._load_event")
+    def test_issue_event_open_sprint1_with_active_ready_pr_gives_in_review(
+        self, mock_load, mock_fetch_pr, mock_meta, mock_find, mock_update
+    ):
+        """issue event + open Sprint-1 issue + active non-draft linked PR → In review."""
+        mock_load.return_value = {"issue": self._sprint1_issue()}
+        mock_fetch_pr.return_value = self._active_ready_pr(issue_number=1)
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_in_review")
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_linked_pr_for_issue")
+    @patch("project_sync._load_event")
+    def test_issue_event_open_sprint1_with_active_draft_pr_gives_in_progress(
+        self, mock_load, mock_fetch_pr, mock_meta, mock_find, mock_update
+    ):
+        """issue event + open Sprint-1 issue + active draft linked PR → In progress."""
+        mock_load.return_value = {"issue": self._sprint1_issue()}
+        mock_fetch_pr.return_value = self._active_draft_pr(issue_number=1)
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_in_progress")
+
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._fetch_linked_pr_for_issue")
+    @patch("project_sync._load_event")
+    def test_issue_event_open_sprint1_no_linked_pr_still_gives_backlog(
+        self, mock_load, mock_fetch_pr, mock_meta, mock_find, mock_update
+    ):
+        """issue event + open Sprint-1 issue + no active linked PR → Backlog (unchanged)."""
+        mock_load.return_value = {"issue": self._sprint1_issue()}
+        mock_fetch_pr.return_value = None
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_backlog")
+
+    @patch("project_sync._fetch_linked_pr_for_issue")
+    @patch("project_sync._update_status")
+    @patch("project_sync._find_or_add_item", return_value="item_id")
+    @patch("project_sync._get_project_meta")
+    @patch("project_sync._load_event")
+    def test_issue_event_closed_sprint1_does_not_call_fetch_linked_pr(
+        self, mock_load, mock_meta, mock_find, mock_update, mock_fetch_pr
+    ):
+        """issue event + closed Sprint-1 issue → Done, no PR lookup needed."""
+        mock_load.return_value = {"issue": self._sprint1_issue(state="closed")}
+        mock_meta.return_value = self._PROJECT_META
+
+        import project_sync
+        with patch.dict(os.environ, self._env()):
+            project_sync.run()
+
+        mock_fetch_pr.assert_not_called()
+        mock_update.assert_called_once_with("P_id", "item_id", "F_id", "opt_done")
 
 
 if __name__ == "__main__":

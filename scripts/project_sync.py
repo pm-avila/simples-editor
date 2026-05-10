@@ -350,6 +350,30 @@ def _fetch_issue(issue_number: int, repo: str) -> dict:
     return _api_request("GET", url)
 
 
+def _fetch_linked_pr_for_issue(issue_number: int, repo: str) -> dict | None:
+    """Return the first open PR in *repo* whose body references *issue_number*, or None.
+
+    Searches open PRs for a Closes/Fixes/Resolves #N reference matching
+    *issue_number*.  Returns the full PR dict (which includes the 'draft' field)
+    so callers can pass it straight to determine_status().
+    """
+    parts = repo.split("/", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise RuntimeError(
+            f"GITHUB_REPOSITORY must be in 'owner/repo' format, got: {repo!r}"
+        )
+    owner, name = parts
+    url = f"https://api.github.com/repos/{owner}/{name}/pulls?state=open&per_page=100"
+    prs = _api_request("GET", url)
+    pattern = re.compile(r"(?:closes|fixes|resolves)\s+#(\d+)", re.IGNORECASE)
+    for pr in prs:
+        body = pr.get("body") or ""
+        for match in pattern.finditer(body):
+            if int(match.group(1)) == issue_number:
+                return pr
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -380,6 +404,11 @@ def run() -> None:
             file=sys.stderr,
         )
         return
+
+    # For issue events on open Sprint-1 issues, check for an active linked PR
+    # so we never regress status from In progress/In review back to Backlog.
+    if "issue" in event and issue.get("state") != "closed":
+        pr = _fetch_linked_pr_for_issue(issue["number"], repo)
 
     status = determine_status(issue, pr)
 

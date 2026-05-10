@@ -256,5 +256,23 @@ class TestFetchSprint1Issues(unittest.TestCase):
         self.assertTrue(any('page=2' in u for u in calls), 'page=2 not requested')
 
 
+class TestProgressSyncWorkflowPermissions(unittest.TestCase):
+    """Workflow file must declare the permissions needed by update_progress.py."""
+
+    _WORKFLOW_PATH = os.path.join(
+        os.path.dirname(__file__), '..', '.github', 'workflows', 'progress-sync.yml'
+    )
+
+    def _workflow_text(self):
+        with open(self._WORKFLOW_PATH, encoding='utf-8') as fh:
+            return fh.read()
+
+    def test_workflow_declares_issues_read_permission(self):
+        """update_progress.py calls the Issues REST API so the workflow needs issues: read."""
+        text = self._workflow_text()
+        self.assertIn('issues: read', text,
+                      'progress-sync.yml must include "issues: read" under permissions')
+
+
 if __name__ == '__main__':
     unittest.main()
