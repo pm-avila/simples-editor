@@ -10,13 +10,13 @@ services:
       - backend
 
   frontend:
-    build: ./frontend
+    image: simples-frontend:dev
     environment:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
 
   backend:
-    build: ./backend
+    image: simples-backend:dev
     environment:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
