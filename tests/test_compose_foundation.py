@@ -8,7 +8,6 @@ Run with:
 import os
 import re
 import unittest
-import yaml
 
 COMPOSE_FILE = os.path.join(os.path.dirname(__file__), "..", "docker-compose.yml")
 ENV_EXAMPLE_FILE = os.path.join(os.path.dirname(__file__), "..", ".env.example")
@@ -27,12 +26,48 @@ REQUIRED_VARIABLES = {
 }
 
 
+def _extract_service_block(raw, service_name):
+    """Return the indented text block owned by *service_name* in a docker-compose YAML string.
+
+    Uses indentation-based line parsing so no third-party library is required.
+    The block starts after the ``service_name:`` header line and ends when a
+    non-blank, non-comment line at the same or lesser indentation level is seen.
+    """
+    lines = raw.splitlines()
+    in_services = False
+    in_target = False
+    header_indent = None
+    block = []
+
+    for line in lines:
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        if not in_services:
+            if re.match(r"^services\s*:", line):
+                in_services = True
+            continue
+
+        if not in_target:
+            if re.match(rf"^\s+{re.escape(service_name)}\s*:", line):
+                in_target = True
+                header_indent = indent
+            continue
+
+        # Collect lines until we exit the service's indented block.
+        if stripped and not stripped.startswith("#") and indent <= header_indent:
+            break
+        block.append(line)
+
+    return "\n".join(block)
+
+
 class ComposeFoundationTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         with open(COMPOSE_FILE, "r") as f:
-            cls.compose = yaml.safe_load(f)
+            cls.compose_raw = f.read()
 
     def test_compose_file_exists(self):
         self.assertTrue(
@@ -41,28 +76,25 @@ class ComposeFoundationTest(unittest.TestCase):
         )
 
     def test_compose_has_services_section(self):
-        self.assertIn(
-            "services", self.compose, "compose must have a 'services' top-level key"
+        self.assertRegex(
+            self.compose_raw,
+            r"(?m)^services\s*:",
+            "compose must have a 'services' top-level key",
         )
 
     def test_required_services_exist(self):
-        defined = set(self.compose.get("services", {}).keys())
-        missing = REQUIRED_SERVICES - defined
+        missing = set()
+        for svc in REQUIRED_SERVICES:
+            block = _extract_service_block(self.compose_raw, svc)
+            if not block and not re.search(
+                rf"(?m)^\s+{re.escape(svc)}\s*:", self.compose_raw
+            ):
+                missing.add(svc)
         self.assertFalse(missing, f"Missing services in compose: {missing}")
 
-    def _collect_env_keys(self, service_def):
-        """Return all environment variable names declared in a service definition."""
-        env = service_def.get("environment", {})
-        if isinstance(env, list):
-            return {item.split("=")[0] for item in env}
-        if isinstance(env, dict):
-            return set(env.keys())
-        return set()
-
     def test_required_variables_declared_in_backend(self):
-        backend = self.compose.get("services", {}).get("backend", {})
-        declared = self._collect_env_keys(backend)
-        missing = REQUIRED_VARIABLES - declared
+        backend_block = _extract_service_block(self.compose_raw, "backend")
+        missing = {var for var in REQUIRED_VARIABLES if var not in backend_block}
         self.assertFalse(
             missing,
             f"backend service is missing required environment variables: {missing}",
@@ -71,47 +103,46 @@ class ComposeFoundationTest(unittest.TestCase):
     # Task 2: frontend and backend must declare build contexts
     def test_frontend_and_backend_use_build_contexts(self):
         """Task 2: frontend and backend must use local build contexts, not plain images."""
-        services = self.compose.get("services", {})
         for name, expected_ctx in (("frontend", "./frontend"), ("backend", "./backend")):
-            svc = services.get(name, {})
-            build = svc.get("build")
-            self.assertIsNotNone(
-                build,
+            block = _extract_service_block(self.compose_raw, name)
+            self.assertIn(
+                "build",
+                block,
                 f"Service '{name}' must declare a 'build' key with context '{expected_ctx}'.",
             )
-            ctx = build if isinstance(build, str) else build.get("context", "")
-            self.assertEqual(
-                ctx,
-                expected_ctx,
-                f"Service '{name}' build context must be '{expected_ctx}', got '{ctx}'.",
+            self.assertRegex(
+                block,
+                rf"context:\s*{re.escape(expected_ctx)}",
+                f"Service '{name}' build context must be '{expected_ctx}'.",
             )
 
     # Task 2: nginx must declare depends_on frontend and backend
     def test_nginx_depends_on_frontend_and_backend(self):
         """nginx must declare depends_on for both frontend and backend."""
-        nginx = self.compose.get("services", {}).get("nginx", {})
-        depends_on = nginx.get("depends_on", [])
-        if isinstance(depends_on, dict):
-            depends_on = list(depends_on.keys())
-        self.assertIn("frontend", depends_on, "nginx depends_on must include 'frontend'")
-        self.assertIn("backend", depends_on, "nginx depends_on must include 'backend'")
+        nginx_block = _extract_service_block(self.compose_raw, "nginx")
+        self.assertIn("depends_on", nginx_block, "nginx must declare depends_on")
+        for svc in ("frontend", "backend"):
+            found = f"- {svc}" in nginx_block or bool(
+                re.search(rf"(?m)^\s+{re.escape(svc)}\s*:", nginx_block)
+            )
+            self.assertTrue(found, f"nginx depends_on must include '{svc}'")
 
     # Task 2: nginx must mount default.conf
     def test_nginx_mounts_default_conf(self):
         """nginx service must volume-mount nginx/default.conf."""
-        nginx = self.compose.get("services", {}).get("nginx", {})
-        volumes = nginx.get("volumes", [])
-        self.assertTrue(
-            any("default.conf" in str(v) for v in volumes),
+        nginx_block = _extract_service_block(self.compose_raw, "nginx")
+        self.assertIn(
+            "default.conf",
+            nginx_block,
             "nginx service must mount nginx/default.conf via volumes.",
         )
 
     # Finding 2: nginx is the sole host entry point — frontend/backend must NOT bind host ports
     def test_frontend_has_no_host_port_binding(self):
         """frontend must not bind host ports; all external traffic flows through nginx."""
-        frontend = self.compose.get("services", {}).get("frontend", {})
-        ports = frontend.get("ports", [])
-        host_bindings = [p for p in ports if ":" in str(p)]
+        frontend_block = _extract_service_block(self.compose_raw, "frontend")
+        # List-item port bindings look like: - "HOST:CONTAINER" or - HOST:CONTAINER
+        host_bindings = re.findall(r"-\s+[\"']?\d+:\d+[\"']?", frontend_block)
         self.assertFalse(
             host_bindings,
             f"frontend must not bind host ports. Remove {host_bindings} from its 'ports' list.",
@@ -119,9 +150,8 @@ class ComposeFoundationTest(unittest.TestCase):
 
     def test_backend_has_no_host_port_binding(self):
         """backend must not bind host ports; all external traffic flows through nginx."""
-        backend = self.compose.get("services", {}).get("backend", {})
-        ports = backend.get("ports", [])
-        host_bindings = [p for p in ports if ":" in str(p)]
+        backend_block = _extract_service_block(self.compose_raw, "backend")
+        host_bindings = re.findall(r"-\s+[\"']?\d+:\d+[\"']?", backend_block)
         self.assertFalse(
             host_bindings,
             f"backend must not bind host ports. Remove {host_bindings} from its 'ports' list.",
@@ -129,10 +159,10 @@ class ComposeFoundationTest(unittest.TestCase):
 
     def test_nginx_is_sole_host_entry_point_on_port_80(self):
         """nginx must be the only service with a host-bound port (port 80)."""
-        nginx = self.compose.get("services", {}).get("nginx", {})
-        ports = nginx.get("ports", [])
-        self.assertTrue(
-            any("80" in str(p) for p in ports),
+        nginx_block = _extract_service_block(self.compose_raw, "nginx")
+        self.assertRegex(
+            nginx_block,
+            r"[\"']?80:\d+[\"']?",
             "nginx must expose port 80 to the host as the sole entry point.",
         )
 
