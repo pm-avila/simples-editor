@@ -28,6 +28,20 @@ class SupabaseFoundationFilesTest(unittest.TestCase):
         self.assertIn("site_url =", content)
         self.assertIn("enable_signup =", content)
 
+    def test_supabase_config_matches_minimal_task_one_content(self):
+        content = (ROOT / "supabase" / "config.toml").read_text(encoding="utf-8")
+        expected = (
+            'project_id = "simples-editor"\n'
+            '[auth]\n'
+            'enabled = true\n'
+            'site_url = "http://localhost"\n'
+            'additional_redirect_urls = ["http://localhost"]\n'
+            'jwt_expiry = 3600\n'
+            'enable_signup = true\n'
+            'enable_anonymous_sign_ins = false\n'
+        )
+        self.assertEqual(expected, content)
+
     def test_backend_requirements_prepare_local_jwt_validation(self):
         content = (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8")
         self.assertIn("PyJWT==", content)
