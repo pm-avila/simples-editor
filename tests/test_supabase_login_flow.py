@@ -26,6 +26,11 @@ class SupabaseLoginUiTest(unittest.TestCase):
         content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="login-shell"', content)
 
+    def test_login_page_script_has_matching_file(self):
+        content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('./app.js', content)
+        self.assertTrue((ROOT / "frontend" / "app.js").exists())
+
     def test_public_frontend_config_exposes_supabase_url_and_anon_key(self):
         content = (ROOT / "frontend" / "config.js").read_text(encoding="utf-8")
         self.assertIn("SUPABASE_URL", content)
