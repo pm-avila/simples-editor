@@ -1,5 +1,4 @@
 project_id = "simples-editor"
-
 [auth]
 enabled = true
 site_url = "http://localhost"
