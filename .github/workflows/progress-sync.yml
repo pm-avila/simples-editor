@@ -3,7 +3,7 @@ name: Sync Sprint 1 Progress
 on:
   workflow_dispatch:
   issues:
-    types: [opened, closed, reopened, labeled, unlabeled, milestoned, demilestoned]
+    types: [opened, edited, closed, reopened, labeled, unlabeled, milestoned, demilestoned]
   pull_request:
     types: [opened, closed, reopened]
 
@@ -31,5 +31,5 @@ jobs:
           else
             git add PROGRESS.md
             git commit -m "docs: sync Sprint 1 progress [skip ci]"
-            git push
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
           fi

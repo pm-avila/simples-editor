@@ -7,10 +7,16 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
+import io
+import json
+import urllib.error
+
 from update_progress import (
     is_sprint1_issue,
     render_progress,
     write_progress_if_changed,
+    _api_request,
+    fetch_sprint1_issues,
 )
 
 
@@ -130,6 +136,124 @@ class TestWriteProgressIfChanged(unittest.TestCase):
                 fh.write('# Progress\n')
             changed = write_progress_if_changed(path, '# Progress\n\n## Sprint 1\n')
             self.assertTrue(changed)
+
+
+def _fake_urlopen_returning(payload):
+    """Return a mock context manager whose .read() yields *payload* as JSON bytes."""
+    raw = json.dumps(payload).encode()
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=cm)
+    cm.__exit__ = MagicMock(return_value=False)
+    cm.read = MagicMock(return_value=raw)
+    return cm
+
+
+class TestApiRequest(unittest.TestCase):
+
+    def test_returns_parsed_json_on_success(self):
+        payload = [{'id': 1, 'title': 'bootstrap'}]
+        with patch('urllib.request.urlopen', return_value=_fake_urlopen_returning(payload)):
+            result = _api_request('https://api.github.com/repos/x/y/issues', 'tok')
+        self.assertEqual(result, payload)
+
+    def test_raises_runtime_error_on_http_error(self):
+        err = urllib.error.HTTPError(
+            url='https://api.github.com/repos/x/y/issues',
+            code=403,
+            msg='Forbidden',
+            hdrs={},
+            fp=io.BytesIO(b'rate limit exceeded'),
+        )
+        with patch('urllib.request.urlopen', side_effect=err):
+            with self.assertRaises(RuntimeError) as ctx:
+                _api_request('https://api.github.com/repos/x/y/issues', 'tok')
+        self.assertIn('403', str(ctx.exception))
+
+    def test_sets_authorization_header(self):
+        payload = []
+        captured = {}
+
+        def fake_urlopen(req):
+            captured['headers'] = req.headers
+            return _fake_urlopen_returning(payload)
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+            _api_request('https://api.github.com/repos/x/y/issues', 'mytoken')
+
+        self.assertIn('Authorization', captured['headers'])
+        self.assertIn('mytoken', captured['headers']['Authorization'])
+
+
+def _sprint1_item(number, title='item', state='open'):
+    return {
+        'number': number,
+        'title': title,
+        'state': state,
+        'labels': [{'name': 'sprint-1'}],
+        'milestone': None,
+    }
+
+
+class TestFetchSprint1Issues(unittest.TestCase):
+
+    def test_returns_sprint1_issues_from_single_page(self):
+        items = [_sprint1_item(1), _sprint1_item(2)]
+        with patch('update_progress._api_request', return_value=items):
+            result = fetch_sprint1_issues('tok', 'owner/repo')
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['number'], 1)
+
+    def test_paginates_until_short_page(self):
+        page1 = [_sprint1_item(i) for i in range(1, 101)]   # 100 items → continue
+        page2 = [_sprint1_item(i) for i in range(101, 106)]  # 5 items → stop
+        pages = iter([page1, page2])
+        with patch('update_progress._api_request', side_effect=lambda url, tok: next(pages)):
+            result = fetch_sprint1_issues('tok', 'owner/repo')
+        self.assertEqual(len(result), 105)
+
+    def test_stops_on_empty_page(self):
+        with patch('update_progress._api_request', return_value=[]):
+            result = fetch_sprint1_issues('tok', 'owner/repo')
+        self.assertEqual(result, [])
+
+    def test_filters_out_non_sprint1_items(self):
+        items = [
+            _sprint1_item(1),
+            {'number': 2, 'title': 'sprint-2 work', 'state': 'open',
+             'labels': [{'name': 'sprint-2'}], 'milestone': None},
+        ]
+        with patch('update_progress._api_request', return_value=items):
+            result = fetch_sprint1_issues('tok', 'owner/repo')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['number'], 1)
+
+    def test_filters_out_pull_requests(self):
+        pr = {**_sprint1_item(3), 'pull_request': {'url': 'https://api.github.com/repos/x/y/pulls/3'}}
+        items = [_sprint1_item(1), pr]
+        with patch('update_progress._api_request', return_value=items):
+            result = fetch_sprint1_issues('tok', 'owner/repo')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['number'], 1)
+
+    def test_propagates_api_error(self):
+        with patch('update_progress._api_request', side_effect=RuntimeError('API 403')):
+            with self.assertRaises(RuntimeError):
+                fetch_sprint1_issues('tok', 'owner/repo')
+
+    def test_url_includes_page_number(self):
+        page1 = [_sprint1_item(i) for i in range(1, 101)]
+        page2 = [_sprint1_item(101)]
+        calls = []
+
+        def fake_api(url, tok):
+            calls.append(url)
+            return page1 if url.endswith('page=1') else page2
+
+        with patch('update_progress._api_request', side_effect=fake_api):
+            fetch_sprint1_issues('tok', 'owner/repo')
+
+        self.assertTrue(any('page=1' in u for u in calls), 'page=1 not requested')
+        self.assertTrue(any('page=2' in u for u in calls), 'page=2 not requested')
 
 
 if __name__ == '__main__':
