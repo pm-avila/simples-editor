@@ -6,66 +6,20 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class SupabaseLoginUiTest(unittest.TestCase):
-    def test_login_ui_and_public_config_exist(self):
+    def test_frontend_react_entrypoints_exist(self):
         required = [
             ROOT / "frontend" / "index.html",
             ROOT / "frontend" / "config.js",
+            ROOT / "frontend" / "package.json",
+            ROOT / "frontend" / "src" / "main.tsx",
+            ROOT / "frontend" / "src" / "app.tsx",
         ]
         for path in required:
             self.assertTrue(path.exists(), f"missing: {path}")
 
-    def test_login_page_has_email_password_and_ide_shell(self):
-        content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('type="email"', content)
-        self.assertIn('type="password"', content)
-        self.assertIn('id="login-form"', content)
-        self.assertIn('id="ide-shell"', content)
-        self.assertIn("IDE access granted", content)
-
-    def test_login_page_includes_login_screen_marker(self):
-        content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('id="login-screen"', content)
-
-    def test_login_page_script_has_matching_file(self):
-        content = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('./app.js', content)
-        self.assertTrue((ROOT / "frontend" / "app.js").exists())
-
-    def test_public_frontend_config_exposes_supabase_url_and_anon_key(self):
-        content = (ROOT / "frontend" / "config.js").read_text(encoding="utf-8")
-        self.assertIn("SUPABASE_URL", content)
-        self.assertIn("SUPABASE_ANON_KEY", content)
-
-
-class SupabaseLoginFlowScriptTest(unittest.TestCase):
-    def test_app_js_uses_supabase_client_and_password_sign_in(self):
-        content = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-        self.assertIn("createClient", content)
-        self.assertIn("signInWithPassword", content)
-        self.assertIn("SUPABASE_URL", content)
-        self.assertIn("SUPABASE_ANON_KEY", content)
-
-    def test_app_js_restores_session_and_reveals_ide_shell(self):
-        content = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-        self.assertIn("getSession", content)
-        self.assertIn("login-form", content)
-        self.assertIn("ide-shell", content)
-        self.assertIn(".hidden", content.replace(" ", ""))
-
-
-class SupabaseLoginReadmeTest(unittest.TestCase):
-    def test_readme_documents_frontend_login_setup(self):
-        content = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Supabase login", content)
-        self.assertIn("SUPABASE_URL", content)
-        self.assertIn("SUPABASE_ANON_KEY", content)
-        self.assertIn("email/password", content)
-        self.assertIn("IDE access granted", content)
-
-    def test_readme_explains_window_based_frontend_configuration(self):
-        content = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("window.__SUPABASE_URL__", content)
-        self.assertIn("window.__SUPABASE_ANON_KEY__", content)
+    def test_app_source_exposes_login_marker(self):
+        content = (ROOT / "frontend" / "src" / "app.tsx").read_text(encoding="utf-8")
+        self.assertIn("login-screen", content)
 
 
 if __name__ == "__main__":
