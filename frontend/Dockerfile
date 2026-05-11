@@ -1,9 +1,10 @@
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY . .
+COPY server.py .
+COPY index.html .
 
 EXPOSE 8080
 
-CMD ["python", "server.py"]
+CMD ["python3", "server.py"]

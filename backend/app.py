@@ -1,3 +1,5 @@
+"""Minimal Flask application for the backend container."""
+
 from flask import Flask, jsonify
 
 app = Flask(__name__)
