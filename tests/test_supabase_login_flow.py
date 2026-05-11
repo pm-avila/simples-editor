@@ -22,5 +22,24 @@ class SupabaseLoginUiTest(unittest.TestCase):
         self.assertIn("login-screen", content)
 
 
+class SupabaseLoginFlowScriptTest(unittest.TestCase):
+    def test_runtime_config_and_client_are_centralized(self):
+        config = (ROOT / "frontend" / "src" / "lib" / "runtime-config.ts").read_text(encoding="utf-8")
+        supabase = (ROOT / "frontend" / "src" / "lib" / "supabase.ts").read_text(encoding="utf-8")
+        self.assertIn("window.__SUPABASE_URL__", config)
+        self.assertIn("window.__SUPABASE_ANON_KEY__", config)
+        self.assertIn("createClient", supabase)
+
+    def test_login_component_keeps_existing_markers(self):
+        content = (ROOT / "frontend" / "src" / "components" / "auth" / "login-screen.tsx").read_text(encoding="utf-8")
+        app = (ROOT / "frontend" / "src" / "app.tsx").read_text(encoding="utf-8")
+        self.assertIn('id="login-form"', content)
+        self.assertIn('type="email"', content)
+        self.assertIn('type="password"', content)
+        self.assertIn("signInWithPassword", app)
+        self.assertIn("getSession", app)
+        self.assertIn("ide-shell", app)
+
+
 if __name__ == "__main__":
     unittest.main()
