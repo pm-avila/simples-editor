@@ -25,6 +25,11 @@ class MonacoMainRouteTest(unittest.TestCase):
         self.assertIn("defaultLanguage", editor)
         self.assertIn("onChange", editor)
 
+    def test_ide_shell_is_reachable_at_ide_route(self):
+        router = (ROOT / "frontend" / "src" / "router.tsx").read_text(encoding="utf-8")
+        self.assertIn('path: "/ide"', router, "router must expose an /ide route")
+        self.assertIn("IdeShell", router, "IdeShell component must be wired to the /ide route")
+
 
 if __name__ == "__main__":
     unittest.main()
