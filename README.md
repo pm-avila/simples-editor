@@ -79,6 +79,16 @@ O `docker-compose.yml` usa `${VAR:-default}` em todas as referências, portanto 
 
 Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally with the shared secret (`SUPABASE_JWT_SECRET`), without querying the database on every request.
 
+## Backend JWT validation
+
+Sprint 1 validates Supabase JWTs in the backend with a shared `verify_jwt` mechanism.
+
+The backend depends on:
+
+- `SUPABASE_JWT_SECRET`
+
+The validator decodes the JWT locally, extracts `user_id` from the `sub` claim, and protects backend handlers without querying the database for each request.
+
 ## Supabase login
 
 Sprint 1 uses Supabase email/password authentication in the frontend before releasing access to the IDE shell.
