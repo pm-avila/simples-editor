@@ -61,6 +61,20 @@ class HealthEndpointContractTest(unittest.TestCase):
         self.assertEqual(response.get_json()["service"], "backend")
 
 
+class HealthEndpointCompatibilityTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.client = _load_create_app()().test_client()
+
+    def test_legacy_compose_routes_remain_available(self):
+        for path in ("/", "/health"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.get_json(), {"status": "ok"})
+
+
 class HealthEndpointReadmeTest(unittest.TestCase):
     def test_readme_documents_public_health_check(self):
         content = (ROOT / "README.md").read_text(encoding="utf-8")

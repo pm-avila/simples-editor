@@ -3,17 +3,26 @@ from flask import Flask, jsonify
 from backend.health import build_health_payload
 
 
+app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.get("/api/health")
+def api_health():
+    return jsonify(build_health_payload())
+
+
 def create_app():
-    app = Flask(__name__)
-
-    @app.get("/api/health")
-    def health():
-        return jsonify(build_health_payload())
-
     return app
-
-
-app = create_app()
 
 
 if __name__ == "__main__":
