@@ -1,18 +1,19 @@
-"""Minimal Flask application for the backend container."""
-
 from flask import Flask, jsonify
 
-app = Flask(__name__)
+from backend.health import build_health_payload
 
 
-@app.route("/")
-def index():
-    return jsonify({"status": "ok"})
+def create_app():
+    app = Flask(__name__)
+
+    @app.get("/api/health")
+    def health():
+        return jsonify(build_health_payload())
+
+    return app
 
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
+app = create_app()
 
 
 if __name__ == "__main__":

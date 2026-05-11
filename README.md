@@ -75,6 +75,14 @@ Todas as variáveis necessárias estão documentadas em `.env.example`. Copie-o 
 
 O `docker-compose.yml` usa `${VAR:-default}` em todas as referências, portanto o ambiente sobe mesmo sem `.env` (com valores de desenvolvimento padrão).
 
+## Public health check
+
+The backend exposes `GET /api/health` without JWT for local diagnostics and deployment probes.
+
+Expected healthy response:
+
+    {"status": "ok", "service": "backend"}
+
 ## Supabase auth foundation
 
 Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally with the shared secret (`SUPABASE_JWT_SECRET`), without querying the database on every request.
