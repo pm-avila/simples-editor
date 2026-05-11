@@ -1,6 +1,6 @@
 ---
 name: Feature
-about: Nova funcionalidade do Simples Online
+about: Nova funcionalidade do Simples Editor
 labels: feature
 ---
 
