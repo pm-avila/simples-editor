@@ -14,6 +14,9 @@ services:
       context: ./frontend
     expose:
       - "8080"
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dev-anon-key}
 
   backend:
     build:
@@ -21,9 +24,9 @@ services:
     expose:
       - "5000"
     environment:
-      SUPABASE_URL: ${SUPABASE_URL:-http://localhost:54321}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-changeme}
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-changeme}
-      COMPILE_TIMEOUT: ${COMPILE_TIMEOUT:-10}
-      EXECUTION_TIMEOUT: ${EXECUTION_TIMEOUT:-5}
-      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-python:3.12-slim}
+      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dev-anon-key}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-dev-jwt-secret}
+      COMPILE_TIMEOUT: ${COMPILE_TIMEOUT:-15}
+      EXECUTION_TIMEOUT: ${EXECUTION_TIMEOUT:-10}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-simples-runner:dev}
