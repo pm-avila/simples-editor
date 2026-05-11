@@ -79,6 +79,31 @@ O `docker-compose.yml` usa `${VAR:-default}` em todas as referências, portanto 
 
 Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally with the shared secret (`SUPABASE_JWT_SECRET`), without querying the database on every request.
 
+## Supabase login
+
+Sprint 1 uses Supabase email/password authentication in the frontend before releasing access to the IDE shell.
+
+The frontend login flow depends on:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+Configure those values before loading the login page by defining:
+
+- `window.__SUPABASE_URL__`
+- `window.__SUPABASE_ANON_KEY__`
+
+Example:
+
+```html
+<script>
+  window.__SUPABASE_URL__ = "https://your-project.supabase.co";
+  window.__SUPABASE_ANON_KEY__ = "your-anon-key";
+</script>
+```
+
+The form sends email/password credentials to Supabase and reveals the protected "IDE access granted" shell after a valid session exists.
+
 ## Sprint 1 — Progresso
 
 O acompanhamento macro da Sprint 1 está em [`PROGRESS.md`](PROGRESS.md), gerado automaticamente via GitHub Actions.
