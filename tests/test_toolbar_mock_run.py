@@ -32,10 +32,14 @@ class ToolbarMockRunTests(unittest.TestCase):
         self.assertIn("Toolbar", src)
 
     def test_ide_shell_manages_status_state(self):
-        """IdeShell must use useState and reference the 'compiling' status."""
+        """IdeShell must use useState typed to IdeStatus."""
         src = IDE_SHELL.read_text()
-        self.assertIn("useState", src)
-        self.assertIn("compiling", src)
+        self.assertIn('useState<IdeStatus>', src)
+
+    def test_ide_shell_status_has_compiling_value(self):
+        """IdeShell must reference the 'compiling' status value."""
+        src = IDE_SHELL.read_text()
+        self.assertIn('"compiling"', src)
 
     def test_monaco_pane_accepts_readonly_prop(self):
         """MonacoEditorPane must accept a readOnly prop and pass it to Monaco."""
@@ -43,9 +47,9 @@ class ToolbarMockRunTests(unittest.TestCase):
         self.assertIn("readOnly", src)
 
     def test_nasm_pane_accepts_status_prop(self):
-        """NasmPane must accept a status prop."""
+        """NasmPane must declare a status prop in its props interface."""
         src = NASM_PANE.read_text()
-        self.assertIn("status", src)
+        self.assertIn("status:", src)
 
     def test_nasm_pane_shows_mock_message(self):
         """NasmPane must render a 'compilando' placeholder when compiling."""
