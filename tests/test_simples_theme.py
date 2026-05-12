@@ -25,5 +25,15 @@ class SimplesThemeContractTest(unittest.TestCase):
         self.assertIn("D4D4D4", content)   # identifier neutral
 
 
+class SimplesThemeIntegrationTest(unittest.TestCase):
+    def test_editor_uses_theme_constant(self):
+        content = (
+            ROOT / "frontend" / "src" / "components" / "ide" / "monaco-editor-pane.tsx"
+        ).read_text(encoding="utf-8")
+        self.assertIn("defineSimplesDarkTheme", content)
+        self.assertIn("SIMPLES_THEME_ID", content)
+        self.assertIn("theme={SIMPLES_THEME_ID}", content)
+
+
 if __name__ == "__main__":
     unittest.main()
