@@ -7,7 +7,18 @@ import subprocess
 import tempfile
 
 SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
-COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "15"))
+
+
+def _parse_timeout(value: str, default: int = 15) -> int:
+    """Parse COMPILE_TIMEOUT env var, returning default on invalid input."""
+    try:
+        parsed = int(value)
+        return parsed if parsed > 0 else default
+    except (ValueError, TypeError):
+        return default
+
+
+COMPILE_TIMEOUT = _parse_timeout(os.environ.get("COMPILE_TIMEOUT", "15"))
 
 # Matches: <line>:<col>: [erro [<phase>]:] <message>
 # Phase alternation captures known keywords; unknown words after "erro" are also
