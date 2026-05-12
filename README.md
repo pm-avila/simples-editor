@@ -122,6 +122,22 @@ Example:
 
 The form sends email/password credentials to Supabase and reveals the protected "IDE access granted" shell after a valid session exists.
 
+## Frontend — React + TypeScript + Monaco
+
+The `frontend/` directory is a **React + TypeScript** single-page application bundled with [Vite](https://vitejs.dev/).
+
+### Build
+
+```bash
+cd frontend
+npm install
+npm run build   # tsc + vite build → dist/
+```
+
+### Architecture
+
+After a successful Supabase login, `App` mounts `IdeShell` — the auth-gated IDE route. `IdeShell` renders **Monaco** (via `@monaco-editor/react`) as the primary editor surface on the `/` path of the router. Unauthenticated users are kept on the login screen and never reach `IdeShell`.
+
 ## Sprint 1 — Progresso
 
 O acompanhamento macro da Sprint 1 está em [`PROGRESS.md`](PROGRESS.md), gerado automaticamente via GitHub Actions.

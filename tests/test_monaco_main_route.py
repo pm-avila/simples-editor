@@ -32,5 +32,26 @@ class MonacoMainRouteTest(unittest.TestCase):
         self.assertIn("IdeShell", app, "IdeShell must be rendered by App's auth gate")
 
 
+class ReadmeContractTest(unittest.TestCase):
+    """Regression guard: README must document the React/TS/Monaco frontend foundation."""
+
+    def setUp(self):
+        self._readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    def test_readme_mentions_monaco(self):
+        self.assertIn("Monaco", self._readme, "README must mention Monaco editor")
+
+    def test_readme_mentions_npm_run_build(self):
+        self.assertIn("npm run build", self._readme, "README must document the frontend build command")
+
+    def test_readme_describes_react_typescript_frontend(self):
+        readme = self._readme.lower()
+        self.assertIn("react", readme, "README must mention React")
+        self.assertIn("typescript", readme, "README must mention TypeScript")
+
+    def test_readme_explains_auth_gated_ide(self):
+        self.assertIn("IdeShell", self._readme, "README must mention IdeShell (auth-gated IDE route)")
+
+
 if __name__ == "__main__":
     unittest.main()
