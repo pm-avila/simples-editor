@@ -15,7 +15,7 @@ type CompileResult =
   | { ok: true; nasm: string }
   | { ok: false; error: CompileError };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
 export async function compileCode(code: string): Promise<CompileResult> {
   const response = await fetch(`${API_BASE}/api/compile`, {

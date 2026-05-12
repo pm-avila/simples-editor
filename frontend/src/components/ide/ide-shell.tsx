@@ -43,6 +43,7 @@ export function IdeShell() {
         setStatus("compile_error");
       }
     } catch {
+      setNasmContent("");
       setStatus("idle");
     }
   }
