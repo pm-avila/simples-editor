@@ -1,6 +1,6 @@
 import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
-import { registerSimplesLanguage } from "./simples-language";
+import { registerSimplesLanguage, SIMPLES_LANGUAGE_ID } from "./simples-language";
 
 
 interface MonacoEditorPaneProps {
@@ -21,7 +21,7 @@ export function MonacoEditorPane({ initialValue = "" }: MonacoEditorPaneProps) {
     <Editor
       height="90vh"
       beforeMount={beforeMount}
-      defaultLanguage="simples"
+      defaultLanguage={SIMPLES_LANGUAGE_ID}
       defaultValue={initialValue}
       onChange={onChange}
     />

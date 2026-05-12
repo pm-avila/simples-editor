@@ -44,8 +44,9 @@ class SimplesLanguageIntegrationTest(unittest.TestCase):
             ROOT / "frontend" / "src" / "components" / "ide" / "monaco-editor-pane.tsx"
         ).read_text(encoding="utf-8")
         self.assertIn("registerSimplesLanguage", content)
+        self.assertIn("SIMPLES_LANGUAGE_ID", content)
         self.assertIn("beforeMount", content)
-        self.assertIn('defaultLanguage="simples"', content)
+        self.assertIn("defaultLanguage={SIMPLES_LANGUAGE_ID}", content)
 
 
 if __name__ == "__main__":
