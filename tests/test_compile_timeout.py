@@ -67,16 +67,12 @@ class TestTimeoutPassedToSubprocess(unittest.TestCase):
         """The timeout kwarg passed to subprocess.run must equal COMPILE_TIMEOUT."""
         import backend.compiler as compiler_mod
 
-        original = compiler_mod.COMPILE_TIMEOUT
-        try:
-            compiler_mod.COMPILE_TIMEOUT = 42
+        with patch.object(compiler_mod, "COMPILE_TIMEOUT", 42):
             with patch("backend.compiler.subprocess.run", side_effect=self._make_success_run()) as mock_run:
                 from backend.compiler import compile_simples
                 compile_simples("programa teste\ninicio\nfim\n")
-            _, kwargs = mock_run.call_args
-            self.assertEqual(kwargs.get("timeout", mock_run.call_args[0]), 42)
-        finally:
-            compiler_mod.COMPILE_TIMEOUT = original
+        _, kwargs = mock_run.call_args
+        self.assertEqual(kwargs["timeout"], 42)
 
     def test_timeout_expired_returns_structured_error(self):
         """TimeoutExpired must produce a JSON-serialisable error dict."""
