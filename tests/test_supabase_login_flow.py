@@ -17,6 +17,14 @@ class SupabaseLoginUiTest(unittest.TestCase):
         for path in required:
             self.assertTrue(path.exists(), f"missing: {path}")
 
+    def test_config_js_in_public_for_vite_build(self):
+        """config.js must live in frontend/public/ so Vite copies it to dist/."""
+        public_config = ROOT / "frontend" / "public" / "config.js"
+        self.assertTrue(public_config.exists(), "frontend/public/config.js missing – dist/ won't include it")
+        content = public_config.read_text(encoding="utf-8")
+        self.assertIn("__SUPABASE_URL__", content)
+        self.assertIn("__SUPABASE_ANON_KEY__", content)
+
     def test_app_source_exposes_login_marker(self):
         content = (ROOT / "frontend" / "src" / "app.tsx").read_text(encoding="utf-8")
         self.assertIn("login-screen", content)
