@@ -30,7 +30,7 @@
 - [x] #20 feat(errors): normalize compiler errors by phase
 - [ ] #21 feat(editor): map compile errors to Monaco markers
 - [ ] #22 feat(nasm): sync generated assembly into the NASM panel
-- [ ] #23 feat(compile): enforce compile timeout safeguards
+- [x] #23 feat(compile): enforce compile timeout safeguards
 
 ## Sprint 4
 
