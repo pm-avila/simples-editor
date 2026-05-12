@@ -16,13 +16,22 @@ The Product Requirements Document (PRD) is the source of truth for features and 
 ├── .env.example            # Variáveis de ambiente necessárias (copie para .env)
 ├── nginx/
 │   └── default.conf        # Configuração do nginx (proxy reverso único)
-├── frontend/               # React + TypeScript app (built with Vite)
+├── frontend/               # React + TypeScript + Monaco app (built with Vite)
 │   ├── Dockerfile
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── package.json
 │   ├── tsconfig.json
-│   └── src/                # App source (main.tsx, app.tsx, components/)
+│   ├── public/
+│   │   └── config.js       # Runtime config injected by server.py (Supabase keys etc.)
+│   └── src/
+│       ├── main.tsx
+│       ├── app.tsx         # Auth gate — mounts IdeShell after Supabase login
+│       ├── router.tsx      # React Router config; / → IdeShell (auth-gated)
+│       ├── components/
+│       │   ├── ide/        # IdeShell + MonacoEditorPane (Monaco-centered IDE)
+│       │   └── auth/       # LoginScreen
+│       └── lib/            # runtime-config.ts, supabase.ts
 └── backend/                # API Flask
     ├── Dockerfile
     ├── app.py
