@@ -354,3 +354,85 @@ Foi investigado o workflow `Sync Sprint 1 Progress` em `.github/workflows/progre
 - o workflow ficou estável
 - o run de `dev` passou com sucesso
 - o erro do Actions foi explicado e corrigido
+
+---
+
+## 17. Sprint-03: issues #17 a #23
+
+**Prompt do usuário**
+
+> Leia o arquivo @docs/pr-workflow.md
+>
+> Vamos implementar da issue #17 até a issue #23 referente ao sprint-03. Siga o nosso fluxo descrito no arquivo docs/pr-workflow.md
+
+**Resposta do assistente**
+
+O fluxo de workflow foi executado em autopilot para todas as 7 issues da Sprint-03 (backend Python + frontend React/TypeScript), seguindo o ciclo: brainstorm → plan → implement → PR → review → merge → evidence update.
+
+**Resultado completo**
+
+| PR | Issue | Descrição |
+|----|-------|-----------|
+| **#64** | **#17** | `simplesc` stub compiler em C99 + Dockerfile ubuntu:24.04 |
+| **#65** | **#18** | `nasm` + `binutils-i686-linux-gnu` para linking i386 |
+| **#66** | **#19** | `POST /api/compile` endpoint (Flask + compiler.py com error parsing) |
+| **#67** | **#20** | Normalização de erros por fase (lexico/sintatico/semantico) |
+| **#68** | **#23** | Timeout safeguards com `_parse_timeout()` |
+| **#69** | **#21** | Monaco markers para erros de compilação (frontend type mapping) |
+| **#70** | **#22** | NASM panel sync com assembly gerado |
+
+**Detalhes técnicos implementados**
+
+1. **backend/simples-compiler/**
+   - `simplesc.c` — contrato: `simplesc <src.simples> -o <out.asm>`
+   - `Makefile` — compila para `.worktrees/temp/`
+   - `README.md` — documentação
+
+2. **backend/compiler.py**
+   - `compile_simples(code, timeout)` — invoca subprocess, retorna `{ok, nasm, error}`
+   - `_parse_compiler_error()` — extrai `(line, col, phase, message)` com regex capturando fase (lexico/sintatico/semantico)
+   - `_parse_timeout()` — processa env var com fallback seguro (default 15s)
+   - fila de processamento com timeout
+
+3. **backend/Dockerfile**
+   - base `ubuntu:24.04`
+   - `build-essential`, `python3-pip`, `nasm`, `binutils-i686-linux-gnu`
+   - build do `simplesc` durante imagem
+
+4. **tests/**
+   - `test_compile_endpoint.py` — 9 testes para `POST /api/compile`
+   - `test_compiler_phase.py` — 16 testes para normalização de fase
+   - `test_compile_timeout.py` — 14 testes com `patch.object` (thread-safe)
+   - Total: **57 testes Python passando**
+
+5. **frontend/src/**
+   - `lib/compile-api.ts` — typed fetch wrapper com fix de trailing slash
+   - `components/ide/monaco-editor-pane.tsx` — `forwardRef` + `useImperativeHandle` (getValue/setMarkers/clearMarkers)
+   - `components/ide/ide-shell.tsx` — orquestra compile flow, wira `nasmContent`, `status`
+   - `components/ide/toolbar.tsx` — exporta `IdeStatus` type
+   - `components/ide/nasm-pane.tsx` — placeholder quando idle, "Compilando…" durante compile, mostra .asm ou erro como comentário NASM
+   - `vite-env.d.ts` — tipos para `import.meta.env`
+   - TypeScript: `tsc --noEmit` sem erros
+
+**Fixes durante code review**
+
+1. **PR #69 (issue #21)**
+   - Stale NASM content após network error — fixo: `setNasmContent("")` no catch
+   - Double slash se `VITE_API_BASE_URL` tem trailing slash — fixo: `.replace(/\/$/, "")`
+
+2. **PR #70 (issue #22)**
+   - Placeholder melhorado: `; Execute o programa para ver o assembly gerado.`
+   - Error messages prefixadas com `; Erro de compilação:\n;` (comentário NASM válido)
+
+**Documentação atualizada**
+
+- `docs/pr-evidence.md` — todas 7 PRs registradas (PR #64–#70)
+- `.gitignore` — adicionado `backend/simples-compiler/simplesc`
+
+**Estado final**
+
+- Todos 7 PRs mergeados em `dev`
+- 57 testes Python: ✅ passando
+- TypeScript: ✅ sem erros
+- `docs/pr-evidence.md`: ✅ atualizado
+- **Sprint-03 completa** ✅
