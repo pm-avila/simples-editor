@@ -1,5 +1,6 @@
 import unittest
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).parent.parent
 IDE_SHELL = ROOT / "frontend/src/components/ide/ide-shell.tsx"
@@ -35,6 +36,8 @@ class IdeShellSplitterTests(unittest.TestCase):
         self.assertIn(".resize-handle", css)
 
     def test_grid_template_columns_removed_from_ide_shell(self):
-        """grid-template-columns must be removed from #ide-shell (replaced by PanelGroup)."""
+        """grid-template-columns must be removed from the #ide-shell rule (replaced by PanelGroup)."""
         css = STYLES.read_text()
-        self.assertNotIn("grid-template-columns", css)
+        match = re.search(r'#ide-shell\s*\{([^}]*)\}', css)
+        self.assertIsNotNone(match, "#ide-shell rule not found in styles.css")
+        self.assertNotIn("grid-template-columns", match.group(1))
