@@ -39,7 +39,7 @@ export function IdeShell() {
         setStatus("idle");
       } else {
         editor.setMarkers([result.error]);
-        setNasmContent(result.error.message);
+        setNasmContent(`; Erro de compilação:\n; ${result.error.message}`);
         setStatus("compile_error");
       }
     } catch {
