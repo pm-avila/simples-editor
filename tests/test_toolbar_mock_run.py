@@ -49,7 +49,7 @@ class ToolbarMockRunTests(unittest.TestCase):
     def test_nasm_pane_accepts_status_prop(self):
         """NasmPane must declare a status prop in its props interface."""
         src = NASM_PANE.read_text()
-        self.assertIn("status:", src)
+        self.assertTrue("status:" in src or "status?:" in src, "NasmPane must declare a status prop")
 
     def test_nasm_pane_shows_mock_message(self):
         """NasmPane must render a 'compilando' placeholder when compiling."""
