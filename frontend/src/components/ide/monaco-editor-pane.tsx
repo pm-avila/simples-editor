@@ -6,10 +6,11 @@ import { defineSimplesDarkTheme, SIMPLES_THEME_ID } from "./simples-theme";
 
 interface MonacoEditorPaneProps {
   initialValue?: string;
+  readOnly?: boolean;
 }
 
 
-export function MonacoEditorPane({ initialValue = "" }: MonacoEditorPaneProps) {
+export function MonacoEditorPane({ initialValue = "", readOnly = false }: MonacoEditorPaneProps) {
   function onChange(_value: string | undefined) {
     // handle editor content changes
   }
@@ -27,6 +28,7 @@ export function MonacoEditorPane({ initialValue = "" }: MonacoEditorPaneProps) {
       defaultValue={initialValue}
       theme={SIMPLES_THEME_ID}
       onChange={onChange}
+      options={{ readOnly }}
     />
   );
 }
