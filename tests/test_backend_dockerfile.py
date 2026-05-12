@@ -109,5 +109,42 @@ class BackendPackageImportSmokeTest(unittest.TestCase):
             self.fail(f"backend.health could not be imported: {exc}")
 
 
+class BackendDockerfileCompilerTest(unittest.TestCase):
+    """Dockerfile deve usar ubuntu como base e compilar simplesc."""
+
+    def test_base_image_is_ubuntu(self):
+        """FROM deve usar ubuntu (não python:*-slim)."""
+        text = _dockerfile_text()
+        self.assertIn(
+            "ubuntu",
+            text,
+            "Dockerfile base image must be ubuntu (not python:3.12-slim) "
+            "so build-essential is available for compiling simplesc.",
+        )
+
+    def test_simplesc_binary_is_installed(self):
+        """Dockerfile deve copiar simples-compiler e instalar o binário."""
+        text = _dockerfile_text()
+        self.assertIn(
+            "simples-compiler",
+            text,
+            "Dockerfile must COPY simples-compiler source tree.",
+        )
+        self.assertIn(
+            "simplesc",
+            text,
+            "Dockerfile must install simplesc binary (cp simplesc /usr/local/bin/simplesc).",
+        )
+
+    def test_build_essential_installed(self):
+        """Dockerfile deve instalar build-essential para compilar simplesc."""
+        text = _dockerfile_text()
+        self.assertIn(
+            "build-essential",
+            text,
+            "Dockerfile must install build-essential to compile the simplesc C source.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
