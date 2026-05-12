@@ -73,6 +73,23 @@ class ReadmeContractTest(unittest.TestCase):
         )
         self.assertIn("IdeShell", app, "app.tsx must render IdeShell for authenticated users")
 
+    def test_readme_config_js_described_as_static_fallback_not_served_dynamically(self):
+        self.assertNotIn(
+            "served dynamically by server.py",
+            self._readme,
+            "README must not say frontend/config.js is 'served dynamically by server.py'",
+        )
+        self.assertIn(
+            "generated",
+            self._readme,
+            "README must state that /config.js is generated at runtime by server.py",
+        )
+        self.assertIn(
+            "fallback",
+            self._readme,
+            "README must describe frontend/config.js as a static fallback",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

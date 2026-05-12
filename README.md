@@ -22,7 +22,7 @@ The Product Requirements Document (PRD) is the source of truth for features and 
 │   ├── vite.config.ts
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── config.js           # Runtime config served dynamically by server.py (Supabase keys etc.)
+│   ├── config.js           # Static source/build fallback; /config.js URL is generated at runtime by server.py
 │   ├── public/
 │   │   └── config.js       # Static build fallback; copied to dist/ by Vite
 │   └── src/
