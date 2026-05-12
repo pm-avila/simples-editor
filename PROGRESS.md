@@ -29,7 +29,7 @@
 - [x] #19 feat(compile): implement POST /api/compile endpoint
 - [x] #20 feat(errors): normalize compiler errors by phase
 - [x] #21 feat(editor): map compile errors to Monaco markers
-- [ ] #22 feat(nasm): sync generated assembly into the NASM panel
+- [x] #22 feat(nasm): sync generated assembly into the NASM panel
 - [x] #23 feat(compile): enforce compile timeout safeguards
 
 ## Sprint 4
