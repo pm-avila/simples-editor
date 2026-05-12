@@ -16,10 +16,13 @@ The Product Requirements Document (PRD) is the source of truth for features and 
 ├── .env.example            # Variáveis de ambiente necessárias (copie para .env)
 ├── nginx/
 │   └── default.conf        # Configuração do nginx (proxy reverso único)
-├── frontend/               # Servidor HTTP estático (Python)
+├── frontend/               # React + TypeScript app (built with Vite)
 │   ├── Dockerfile
 │   ├── index.html
-│   └── server.py
+│   ├── vite.config.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/                # App source (main.tsx, app.tsx, components/)
 └── backend/                # API Flask
     ├── Dockerfile
     ├── app.py
