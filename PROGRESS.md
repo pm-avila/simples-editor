@@ -25,7 +25,7 @@
 ## Sprint 3
 
 - [x] #17 feat(build): package simplesc in the backend image
-- [ ] #18 feat(build): enable i386 linking toolchain in the backend container
+- [x] #18 feat(build): enable i386 linking toolchain in the backend container
 - [ ] #19 feat(compile): implement POST /api/compile endpoint
 - [ ] #20 feat(errors): normalize compiler errors by phase
 - [ ] #21 feat(editor): map compile errors to Monaco markers
