@@ -38,5 +38,15 @@ class SimplesLanguageContractTest(unittest.TestCase):
         self.assertIn(r'/[(),;]/', content)
 
 
+class SimplesLanguageIntegrationTest(unittest.TestCase):
+    def test_editor_registers_language_before_mount_and_uses_simples(self):
+        content = (
+            ROOT / "frontend" / "src" / "components" / "ide" / "monaco-editor-pane.tsx"
+        ).read_text(encoding="utf-8")
+        self.assertIn("registerSimplesLanguage", content)
+        self.assertIn("beforeMount", content)
+        self.assertIn('defaultLanguage="simples"', content)
+
+
 if __name__ == "__main__":
     unittest.main()
