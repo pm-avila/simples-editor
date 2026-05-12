@@ -1,7 +1,6 @@
 import Editor from "@monaco-editor/react";
 import { SIMPLES_THEME_ID } from "./simples-theme";
-
-type IdeStatus = "idle" | "compiling";
+import type { IdeStatus } from "./toolbar";
 
 interface NasmPaneProps {
   status?: IdeStatus;
@@ -9,8 +8,7 @@ interface NasmPaneProps {
 }
 
 export function NasmPane({ status = "idle", value = "" }: NasmPaneProps) {
-  const editorValue =
-    status === "compiling" ? "; compilando... (mock)" : value;
+  const editorValue = status === "compiling" ? "; compilando..." : value;
 
   return (
     <aside className="nasm-pane">
