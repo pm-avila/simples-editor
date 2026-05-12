@@ -1,9 +1,11 @@
 # Funciona em x86_64 (dev local) e ARM64 (Oracle Cloud Ampere A1)
 FROM ubuntu:24.04
 
-# Toolchain C + Python
+# Toolchain cross-target i386 + Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
+      nasm \
+      binutils-i686-linux-gnu \
       python3 \
       python3-pip \
       ca-certificates \

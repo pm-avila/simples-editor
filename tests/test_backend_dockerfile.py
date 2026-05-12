@@ -146,5 +146,29 @@ class BackendDockerfileCompilerTest(unittest.TestCase):
         )
 
 
+class BackendDockerfileToolchainTest(unittest.TestCase):
+    """Dockerfile deve incluir NASM e binutils-i686-linux-gnu."""
+
+    def test_nasm_installed(self):
+        """Dockerfile deve instalar nasm para montar binários ELF i386."""
+        text = _dockerfile_text()
+        self.assertIn(
+            "nasm",
+            text,
+            "Dockerfile must install nasm to assemble ELF i386 objects "
+            "(nasm -f elf32 programa.asm -o programa.o).",
+        )
+
+    def test_binutils_i686_installed(self):
+        """Dockerfile deve instalar binutils-i686-linux-gnu para linkar ELF i386."""
+        text = _dockerfile_text()
+        self.assertIn(
+            "binutils-i686-linux-gnu",
+            text,
+            "Dockerfile must install binutils-i686-linux-gnu to provide "
+            "i686-linux-gnu-ld for cross-target ELF i386 linking on x86_64 and ARM64.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
