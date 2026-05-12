@@ -10,9 +10,10 @@ SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
 COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "15"))
 
 # Matches: <line>:<col>: [erro [<phase>]:] <message>
-# The optional phase group captures lexico/sintatico/semantico or similar keywords.
+# Phase alternation captures known keywords; unknown words after "erro" are also
+# consumed (non-capturing |\s+\w+) so they don't contaminate the message field.
 _ERROR_RE = re.compile(
-    r"^(\d+):(\d+):\s*(?:erro(?:\s+(lexico|sintatico|semantico|lexer|parser|semantic))?\s*:\s*)?(.+)$",
+    r"^(\d+):(\d+):\s*(?:erro(?:\s+(lexico|sintatico|semantico|lexer|parser|semantic)|\s+\w+)?\s*:\s*)?(.+)$",
     re.MULTILINE | re.IGNORECASE,
 )
 

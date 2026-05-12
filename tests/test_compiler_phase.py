@@ -63,6 +63,9 @@ class TestPhaseNormalizationFallback(unittest.TestCase):
     def test_unknown_phase_keyword_falls_back_to_compile(self):
         err = _parse_compiler_error("1:1: erro desconhecido: algo errado")
         self.assertEqual(err["phase"], "compile")
+        # message must NOT include the "erro desconhecido:" prefix
+        self.assertNotIn("desconhecido", err["message"])
+        self.assertEqual(err["message"], "algo errado")
 
     def test_no_location_falls_back_to_compile(self):
         err = _parse_compiler_error("fatal: arquivo nao encontrado")
