@@ -30,8 +30,8 @@ export function registerSimplesLanguage(monaco: typeof Monaco) {
     tokenizer: {
       root: [
         [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
-        [/\\d+\\.\\d+/, "number.float"],
-        [/\\d+/, "number"],
+        [/\d+\.\d+/, "number.float"],
+        [/\d+/, "number"],
         [/<-/, "operator"],
         [/@symbols/, { cases: { "@operators": "operator", "@default": "" } }],
         [/[(),;]/, "delimiter"],

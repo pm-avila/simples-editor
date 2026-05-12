@@ -33,8 +33,8 @@ class SimplesLanguageContractTest(unittest.TestCase):
             ROOT / "frontend" / "src" / "components" / "ide" / "simples-language.ts"
         ).read_text(encoding="utf-8")
         self.assertIn('operators: ["<-", "+", "-", "*", "div", ">", "<", "=", "<>", ">=", "<="]', content)
-        self.assertIn(r'/\\d+\\.\\d+/', content)
-        self.assertIn(r'/\\d+/', content)
+        self.assertIn(r'/\d+\.\d+/', content)
+        self.assertIn(r'/\d+/', content)
         self.assertIn(r'/[(),;]/', content)
 
 
