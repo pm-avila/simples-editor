@@ -9,7 +9,21 @@ import tempfile
 SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
 COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "15"))
 
-_ERROR_RE = re.compile(r"^(\d+):(\d+):\s*(?:erro:\s*)?(.+)$", re.MULTILINE)
+# Matches: <line>:<col>: [erro [<phase>]:] <message>
+# The optional phase group captures lexico/sintatico/semantico or similar keywords.
+_ERROR_RE = re.compile(
+    r"^(\d+):(\d+):\s*(?:erro(?:\s+(lexico|sintatico|semantico|lexer|parser|semantic))?\s*:\s*)?(.+)$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+_PHASE_MAP = {
+    "lexico": "lexer",
+    "lexer": "lexer",
+    "sintatico": "parser",
+    "parser": "parser",
+    "semantico": "semantic",
+    "semantic": "semantic",
+}
 
 
 def compile_simples(code: str) -> dict:
@@ -17,7 +31,7 @@ def compile_simples(code: str) -> dict:
 
     Returns:
         {"ok": True,  "nasm": "<str>"}
-        {"ok": False, "error": {"phase": "compile", "line": N, "column": N, "message": "..."}}
+        {"ok": False, "error": {"phase": "lexer|parser|semantic|compile", "line": N, "column": N, "message": "..."}}
     """
     with tempfile.TemporaryDirectory(prefix="sim-") as tmpdir:
         src_path = os.path.join(tmpdir, "programa.simples")
@@ -65,14 +79,16 @@ def compile_simples(code: str) -> dict:
 
 
 def _parse_compiler_error(stderr: str) -> dict:
-    """Parse compiler stderr line into a structured error dict."""
+    """Parse compiler stderr line into a structured error dict with normalized phase."""
     match = _ERROR_RE.search(stderr)
     if match:
+        raw_phase = (match.group(3) or "").lower()
+        phase = _PHASE_MAP.get(raw_phase, "compile")
         return {
-            "phase": "compile",
+            "phase": phase,
             "line": int(match.group(1)),
             "column": int(match.group(2)),
-            "message": match.group(3).strip(),
+            "message": match.group(4).strip(),
         }
     return {
         "phase": "compile",
