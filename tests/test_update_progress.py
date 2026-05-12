@@ -1,4 +1,4 @@
-"""Tests for update_progress.py — Sprint 1 PROGRESS.md generator."""
+"""Tests for update_progress.py — sprint PROGRESS.md generator."""
 
 import sys
 import os
@@ -13,9 +13,12 @@ import urllib.error
 
 from update_progress import (
     is_sprint1_issue,
+    is_sprint_issue,
+    sprint_number_for_issue,
     render_progress,
     write_progress_if_changed,
     _api_request,
+    fetch_sprint_issues,
     fetch_sprint1_issues,
 )
 
@@ -32,32 +35,55 @@ def _make_issue(number, title, state='open', labels=None, is_pr=False):
     return issue
 
 
-class TestIsSprint1Issue(unittest.TestCase):
+class TestIsSprintIssue(unittest.TestCase):
 
     def test_sprint1_label_qualifies(self):
         issue = _make_issue(1, 'bootstrap docs', labels=['sprint-1', 'docs'])
         self.assertTrue(is_sprint1_issue(issue))
+        self.assertTrue(is_sprint_issue(issue))
+        self.assertEqual(sprint_number_for_issue(issue), 1)
 
     def test_sprint1_milestone_qualifies(self):
         issue = _make_issue(2, 'setup infra', labels=[])
         issue['milestone'] = {'title': 'Sprint 1'}
         self.assertTrue(is_sprint1_issue(issue))
+        self.assertTrue(is_sprint_issue(issue))
+        self.assertEqual(sprint_number_for_issue(issue), 1)
 
-    def test_sprint2_label_excluded(self):
+    def test_sprint2_label_qualifies(self):
+        issue = _make_issue(10, 'editor shell', labels=['sprint-2'])
+        self.assertFalse(is_sprint1_issue(issue))
+        self.assertTrue(is_sprint_issue(issue))
+        self.assertEqual(sprint_number_for_issue(issue), 2)
+
+    def test_sprint2_milestone_qualifies(self):
+        issue = _make_issue(11, 'language registration', labels=[])
+        issue['milestone'] = {'title': 'Sprint 2'}
+        self.assertFalse(is_sprint1_issue(issue))
+        self.assertTrue(is_sprint_issue(issue))
+        self.assertEqual(sprint_number_for_issue(issue), 2)
+
+    def test_sprint2_label_excluded_from_sprint1_helper(self):
         issue = _make_issue(10, 'sprint 2 work', labels=['sprint-2'])
         self.assertFalse(is_sprint1_issue(issue))
 
     def test_no_sprint_label_excluded(self):
         issue = _make_issue(5, 'unrelated', labels=['bug'])
         self.assertFalse(is_sprint1_issue(issue))
+        self.assertFalse(is_sprint_issue(issue))
+        self.assertIsNone(sprint_number_for_issue(issue))
 
     def test_pull_request_excluded(self):
         issue = _make_issue(3, 'some PR', labels=['sprint-1'], is_pr=True)
         self.assertFalse(is_sprint1_issue(issue))
+        self.assertFalse(is_sprint_issue(issue))
+        self.assertIsNone(sprint_number_for_issue(issue))
 
     def test_no_labels_no_milestone_excluded(self):
         issue = _make_issue(7, 'bare issue')
         self.assertFalse(is_sprint1_issue(issue))
+        self.assertFalse(is_sprint_issue(issue))
+        self.assertIsNone(sprint_number_for_issue(issue))
 
 
 class TestRenderProgress(unittest.TestCase):
@@ -70,6 +96,16 @@ class TestRenderProgress(unittest.TestCase):
                         state='open', labels=['sprint-1', 'devops']),
             _make_issue(3, 'feat(infra): scaffold docker compose foundation',
                         state='open', labels=['sprint-1', 'devops']),
+        ]
+
+    def _sprint2_issues(self):
+        return [
+            _make_issue(10, 'feat(editor): integrate Monaco on the main route',
+                        state='closed', labels=['sprint-2', 'frontend']),
+            _make_issue(11, 'feat(editor): register the SIMPLES Monaco language',
+                        state='closed', labels=['sprint-2', 'frontend']),
+            _make_issue(12, 'feat(editor): apply dark theme for SIMPLES syntax',
+                        state='closed', labels=['sprint-2', 'frontend']),
         ]
 
     def test_output_starts_with_progress_heading(self):
@@ -101,6 +137,20 @@ class TestRenderProgress(unittest.TestCase):
         md = render_progress([])
         self.assertIn('## Sprint 1\n', md)
         self.assertNotIn('- [', md)
+
+    def test_groups_multiple_sprints_in_order(self):
+        issues = [
+            _make_issue(10, 'feat(editor): integrate Monaco on the main route',
+                        state='closed', labels=['sprint-2', 'frontend']),
+            _make_issue(1, 'feat(repo): bootstrap repository documentation',
+                        state='closed', labels=['sprint-1', 'docs']),
+        ]
+        md = render_progress(issues)
+        self.assertIn('## Sprint 1\n', md)
+        self.assertIn('## Sprint 2\n', md)
+        self.assertLess(md.index('## Sprint 1'), md.index('## Sprint 2'))
+        self.assertIn('- [x] #1 feat(repo): bootstrap repository documentation', md)
+        self.assertIn('- [x] #10 feat(editor): integrate Monaco on the main route', md)
 
     def test_output_stable_for_same_input(self):
         issues = self._sprint1_issues()
@@ -194,6 +244,16 @@ def _sprint1_item(number, title='item', state='open'):
     }
 
 
+def _sprint2_item(number, title='item', state='open'):
+    return {
+        'number': number,
+        'title': title,
+        'state': state,
+        'labels': [{'name': 'sprint-2'}],
+        'milestone': None,
+    }
+
+
 class TestFetchSprint1Issues(unittest.TestCase):
 
     def test_returns_sprint1_issues_from_single_page(self):
@@ -254,6 +314,25 @@ class TestFetchSprint1Issues(unittest.TestCase):
 
         self.assertTrue(any('page=1' in u for u in calls), 'page=1 not requested')
         self.assertTrue(any('page=2' in u for u in calls), 'page=2 not requested')
+
+
+class TestFetchSprintIssues(unittest.TestCase):
+
+    def test_returns_sprint1_and_sprint2_issues_from_single_page(self):
+        items = [_sprint1_item(1), _sprint2_item(10)]
+        with patch('update_progress._api_request', return_value=items):
+            result = fetch_sprint_issues('tok', 'owner/repo')
+        self.assertEqual([item['number'] for item in result], [1, 10])
+
+    def test_filters_out_non_sprint_items(self):
+        items = [
+            _sprint1_item(1),
+            {'number': 2, 'title': 'docs', 'state': 'open',
+             'labels': [{'name': 'docs'}], 'milestone': None},
+        ]
+        with patch('update_progress._api_request', return_value=items):
+            result = fetch_sprint_issues('tok', 'owner/repo')
+        self.assertEqual([item['number'] for item in result], [1])
 
 
 class TestProgressSyncWorkflowPermissions(unittest.TestCase):
