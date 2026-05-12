@@ -6,10 +6,67 @@
 
 body {
   font-family: sans-serif;
+  background: #1e1e1e;
+  color: #d4d4d4;
 }
 
 #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+#ide-shell {
+  flex: 1;
+  display: grid;
+  grid-template-areas:
+    "editor nasm"
+    "terminal terminal";
+  grid-template-columns: 60fr 40fr;
+  grid-template-rows: 1fr 200px;
+  overflow: hidden;
+}
+
+.editor-area {
+  grid-area: editor;
+  overflow: hidden;
+}
+
+.nasm-pane {
+  grid-area: nasm;
+  display: flex;
+  flex-direction: column;
+  background: #252526;
+  border-left: 1px solid #3c3c3c;
+  overflow: hidden;
+}
+
+.nasm-pane__header {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #858585;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.nasm-pane__body {
+  flex: 1;
+}
+
+.terminal-pane {
+  grid-area: terminal;
+  background: #1e1e1e;
+  border-top: 1px solid #3c3c3c;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.terminal-pane__label {
+  font-size: 12px;
+  color: #858585;
 }

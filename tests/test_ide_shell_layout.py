@@ -27,5 +27,20 @@ class IdePaneContractTest(unittest.TestCase):
         self.assertIn("Terminal", content)
 
 
+class IdeShellIntegrationTest(unittest.TestCase):
+    def test_ide_shell_renders_all_three_panes(self):
+        content = (
+            ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx"
+        ).read_text(encoding="utf-8")
+        self.assertIn("NasmPane", content)
+        self.assertIn("TerminalPane", content)
+        self.assertIn("MonacoEditorPane", content)
+
+    def test_styles_define_ide_shell_grid(self):
+        content = (ROOT / "frontend" / "src" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("#ide-shell", content)
+        self.assertIn("grid-template-areas", content)
+
+
 if __name__ == "__main__":
     unittest.main()
