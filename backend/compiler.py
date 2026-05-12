@@ -47,8 +47,19 @@ def compile_simples(code: str) -> dict:
         if result.returncode != 0:
             return {"ok": False, "error": _parse_compiler_error(result.stderr)}
 
-        with open(asm_path, "r", encoding="utf-8") as f:
-            nasm = f.read()
+        try:
+            with open(asm_path, "r", encoding="utf-8") as f:
+                nasm = f.read()
+        except (FileNotFoundError, OSError):
+            return {
+                "ok": False,
+                "error": {
+                    "phase": "compile",
+                    "line": 0,
+                    "column": 0,
+                    "message": "compilation failed: output file not produced",
+                },
+            }
 
         return {"ok": True, "nasm": nasm}
 

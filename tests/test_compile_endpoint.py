@@ -9,8 +9,6 @@ import subprocess
 import unittest
 from unittest.mock import MagicMock, patch
 
-from backend.app import app
-
 
 SAMPLE_NASM = "section .text\n    global _start\n_start:\n    int 0x80\n"
 
@@ -41,6 +39,7 @@ def _mock_failure(stderr, returncode=1):
 class TestCompileEndpointSuccess(unittest.TestCase):
 
     def setUp(self):
+        from backend.app import app  # lazy import to avoid polluting sys.modules early
         app.config["TESTING"] = True
         self.client = app.test_client()
 
@@ -69,6 +68,7 @@ class TestCompileEndpointSuccess(unittest.TestCase):
 class TestCompileEndpointFailure(unittest.TestCase):
 
     def setUp(self):
+        from backend.app import app  # lazy import
         app.config["TESTING"] = True
         self.client = app.test_client()
 
@@ -109,10 +109,28 @@ class TestCompileEndpointFailure(unittest.TestCase):
         self.assertEqual(resp.status_code, 422)
         self.assertIn("timeout", resp.get_json()["error"]["message"])
 
+    def test_post_compile_no_output_file_returns_422(self):
+        """simplesc exits 0 but doesn't create the .asm file — should not 500."""
+        def fake_no_output(cmd, capture_output, text, timeout):
+            proc = MagicMock()
+            proc.returncode = 0
+            proc.stderr = ""
+            return proc  # does NOT write asm_path
+
+        with patch("backend.compiler.subprocess.run", side_effect=fake_no_output):
+            resp = self.client.post(
+                "/api/compile",
+                data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 422)
+        self.assertIn("output file", resp.get_json()["error"]["message"])
+
 
 class TestCompileEndpointValidation(unittest.TestCase):
 
     def setUp(self):
+        from backend.app import app  # lazy import
         app.config["TESTING"] = True
         self.client = app.test_client()
 
@@ -143,3 +161,4 @@ class TestCompileEndpointValidation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
