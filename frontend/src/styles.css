@@ -29,6 +29,7 @@ body {
 
 .editor-area {
   grid-area: editor;
+  height: 100%;
   overflow: hidden;
 }
 
