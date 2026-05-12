@@ -22,12 +22,13 @@ The Product Requirements Document (PRD) is the source of truth for features and 
 │   ├── vite.config.ts
 │   ├── package.json
 │   ├── tsconfig.json
+│   ├── config.js           # Runtime config served dynamically by server.py (Supabase keys etc.)
 │   ├── public/
-│   │   └── config.js       # Runtime config injected by server.py (Supabase keys etc.)
+│   │   └── config.js       # Static build fallback; copied to dist/ by Vite
 │   └── src/
 │       ├── main.tsx
 │       ├── app.tsx         # Auth gate — mounts IdeShell after Supabase login
-│       ├── router.tsx      # React Router config; / → IdeShell (auth-gated)
+│       ├── router.tsx      # TanStack Router (@tanstack/react-router) config; / → IdeShell (auth-gated)
 │       ├── components/
 │       │   ├── ide/        # IdeShell + MonacoEditorPane (Monaco-centered IDE)
 │       │   └── auth/       # LoginScreen
