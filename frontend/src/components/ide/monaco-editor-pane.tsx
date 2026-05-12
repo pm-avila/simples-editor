@@ -21,7 +21,7 @@ export function MonacoEditorPane({ initialValue = "" }: MonacoEditorPaneProps) {
 
   return (
     <Editor
-      height="90vh"
+      height="100%"
       beforeMount={beforeMount}
       defaultLanguage={SIMPLES_LANGUAGE_ID}
       defaultValue={initialValue}
