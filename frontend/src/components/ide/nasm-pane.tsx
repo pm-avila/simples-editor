@@ -4,7 +4,7 @@ import { SIMPLES_THEME_ID } from "./simples-theme";
 type IdeStatus = "idle" | "compiling";
 
 interface NasmPaneProps {
-  status: IdeStatus;
+  status?: IdeStatus;
   value?: string;
 }
 
