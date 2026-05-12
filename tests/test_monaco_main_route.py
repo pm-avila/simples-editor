@@ -73,6 +73,23 @@ class ReadmeContractTest(unittest.TestCase):
         )
         self.assertIn("IdeShell", app, "app.tsx must render IdeShell for authenticated users")
 
+    def test_readme_router_maps_slash_to_app_not_ideshell(self):
+        """router.tsx maps / to App; App is the auth gate, not IdeShell directly."""
+        router = (ROOT / "frontend" / "src" / "router.tsx").read_text(encoding="utf-8")
+        self.assertIn("App", router, "router.tsx must register App as the / route component")
+        # Verify README does not claim / maps directly to IdeShell
+        self.assertNotIn(
+            "/ → IdeShell",
+            self._readme,
+            "README must not claim router maps / directly to IdeShell",
+        )
+        # README must say the router maps / to App
+        self.assertIn(
+            "/ → App",
+            self._readme,
+            "README must state that router maps / to App (the auth gate)",
+        )
+
     def test_readme_config_js_described_as_static_fallback_not_served_dynamically(self):
         self.assertNotIn(
             "served dynamically by server.py",

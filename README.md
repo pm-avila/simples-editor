@@ -28,7 +28,7 @@ The Product Requirements Document (PRD) is the source of truth for features and 
 │   └── src/
 │       ├── main.tsx
 │       ├── app.tsx         # Auth gate — mounts IdeShell after Supabase login
-│       ├── router.tsx      # TanStack Router (@tanstack/react-router) config; / → IdeShell (auth-gated)
+│       ├── router.tsx      # TanStack Router (@tanstack/react-router) config; / → App (auth gate)
 │       ├── components/
 │       │   ├── ide/        # IdeShell + MonacoEditorPane (Monaco-centered IDE)
 │       │   └── auth/       # LoginScreen
@@ -149,7 +149,7 @@ npm run build   # tsc + vite build → dist/
 
 ### Architecture
 
-After a successful Supabase login, `App` mounts `IdeShell` — the auth-gated IDE route. `IdeShell` renders **Monaco** (via `@monaco-editor/react`) as the primary editor surface on the `/` path of the router. Unauthenticated users are kept on the login screen and never reach `IdeShell`.
+The router maps `/` to `App`. `App` acts as an auth gate: after a successful Supabase login it mounts `IdeShell`, which renders **Monaco** (via `@monaco-editor/react`) as the primary editor surface. Unauthenticated users are kept on the login screen and never reach `IdeShell`.
 
 ## Sprint 1 — Progresso
 
