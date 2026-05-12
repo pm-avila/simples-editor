@@ -33,3 +33,6 @@ htmlcov/
 .coverage
 
 .worktrees/
+
+# Compiled binaries
+backend/simples-compiler/simplesc
