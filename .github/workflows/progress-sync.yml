@@ -5,7 +5,7 @@ on:
   issues:
     types: [opened, edited, closed, reopened, labeled, unlabeled, milestoned, demilestoned]
   pull_request:
-    types: [opened, closed, reopened]
+    types: [opened, synchronize, reopened]
 
 jobs:
   update-progress:
@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
 
       - name: Generate PROGRESS.md
         env:
