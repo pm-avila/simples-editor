@@ -13,7 +13,7 @@ import { createRunSessionClient } from "../../lib/run-session-client";
 import type { RunSessionClient } from "../../lib/run-session-client";
 
 
-export function IdeShell() {
+export function IdeShell({ token }: { token?: string }) {
   const [status, setStatus] = useState<IdeStatus>("idle");
   const [nasmContent, setNasmContent] = useState("");
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
@@ -77,6 +77,7 @@ export function IdeShell() {
             onStdout: (data) => terminalRef.current?.write(data),
             onEvent: handleRunSessionEvent,
             onClose: handleRunSessionClose,
+            token,
           });
         }
         runSessionRef.current?.start(code);

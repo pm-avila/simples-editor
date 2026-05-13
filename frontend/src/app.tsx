@@ -6,15 +6,18 @@ import { IdeShell } from "./components/ide/ide-shell";
 export function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState<string | undefined>();
+  const [accessToken, setAccessToken] = useState<string | undefined>();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuthenticated(!!session);
+      setAccessToken(session?.access_token);
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthenticated(!!session);
+      setAccessToken(session?.access_token ?? undefined);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -29,5 +32,5 @@ export function App() {
     return <LoginScreen onSubmit={handleLogin} error={loginError} />;
   }
 
-  return <IdeShell />;
+  return <IdeShell token={accessToken} />;
 }

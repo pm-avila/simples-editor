@@ -2,6 +2,7 @@ export type RunSessionClientEvents = {
   onStdout?: (data: string) => void;
   onEvent?: (payload: Record<string, unknown>) => void;
   onClose?: () => void;
+  token?: string;
 };
 
 export type RunSessionClient = {
@@ -10,9 +11,10 @@ export type RunSessionClient = {
   stop: () => void;
 };
 
-function buildRunSessionWsUrl() {
+function buildRunSessionWsUrl(token?: string) {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}/ws/run`;
+  const base = `${protocol}://${window.location.host}/ws/run`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
 export function createRunSessionClient(events: RunSessionClientEvents = {}): RunSessionClient {
@@ -28,7 +30,7 @@ export function createRunSessionClient(events: RunSessionClientEvents = {}): Run
 
   function ensureConnected() {
     if (socket && socket.readyState <= WebSocket.OPEN) return;
-    socket = new WebSocket(buildRunSessionWsUrl());
+    socket = new WebSocket(buildRunSessionWsUrl(events.token));
     socket.onopen = () => {
       if (pendingCode !== null) {
         socket?.send(JSON.stringify({ type: "compile_and_run", code: pendingCode }));
