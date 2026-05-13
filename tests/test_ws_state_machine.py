@@ -43,6 +43,18 @@ class SessionStateMachineTest(unittest.TestCase):
         self.assertFalse(machine.accepts_stdin())
         self.assertEqual(machine.state, SessionState.IDLE)
 
+    def test_reset_idle_is_idempotent(self):
+        machine = SessionStateMachine()
+
+        machine.reset_idle()
+        self.assertEqual(machine.state, SessionState.IDLE)
+
+        machine.start_compile()
+        machine.reset_idle()
+        machine.reset_idle()
+
+        self.assertEqual(machine.state, SessionState.IDLE)
+
 
 if __name__ == "__main__":
     unittest.main()

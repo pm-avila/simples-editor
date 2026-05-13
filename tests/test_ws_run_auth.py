@@ -183,6 +183,24 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(payload["state"], "idle")
         self.assertEqual(payload["user_id"], "user-123")
 
+    def test_handle_run_session_bootstrap_payload_shape_regression(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            args={},
+        )
+        ws = FakeWs(incoming=[None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        payload = json.loads(ws.sent[0])
+        self.assertEqual(set(payload.keys()), {"type", "state", "user_id"})
+        self.assertTrue(all(isinstance(payload[key], str) for key in payload))
+
     def test_handle_run_session_ignores_invalid_json_and_missing_type(self):
         import backend.ws.run_session as run_session_module
 
