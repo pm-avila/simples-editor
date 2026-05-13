@@ -126,6 +126,13 @@ class FlaskSockImportGuardTest(unittest.TestCase):
 
         self.assertIsNone(app_module.Sock)
 
+    def test_missing_flask_sock_module_with_missing_exc_name_is_optional(self):
+        app_module = self._load_app_module_raising_on_flask_sock(
+            ModuleNotFoundError("No module named 'flask_sock'")
+        )
+
+        self.assertIsNone(app_module.Sock)
+
     def test_transitive_module_not_found_error_is_not_swallowed(self):
         with self.assertRaises(ModuleNotFoundError) as context:
             self._load_app_module_raising_on_flask_sock(
@@ -133,6 +140,14 @@ class FlaskSockImportGuardTest(unittest.TestCase):
             )
 
         self.assertEqual(context.exception.name, "wsproto")
+
+    def test_unrelated_missing_module_with_missing_exc_name_is_not_swallowed(self):
+        with self.assertRaisesRegex(ModuleNotFoundError, "wsproto") as context:
+            self._load_app_module_raising_on_flask_sock(
+                ModuleNotFoundError("No module named 'wsproto'")
+            )
+
+        self.assertIsNone(context.exception.name)
 
 
 class FakeWs:

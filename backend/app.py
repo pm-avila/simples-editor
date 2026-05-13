@@ -1,8 +1,20 @@
 from flask import Flask, jsonify, request
+
+
+def _is_optional_flask_sock_import_error(exc):
+    if exc.name == "flask_sock":
+        return True
+
+    if exc.name is not None:
+        return False
+
+    return "No module named" in str(exc) and "'flask_sock'" in str(exc)
+
+
 try:
     from flask_sock import Sock
 except ModuleNotFoundError as exc:
-    if exc.name != "flask_sock":
+    if not _is_optional_flask_sock_import_error(exc):
         raise
     Sock = None
 
