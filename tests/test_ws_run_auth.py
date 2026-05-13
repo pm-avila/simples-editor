@@ -378,7 +378,9 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         sent = [json.loads(item) for item in ws.sent]
         self.assertEqual(sent[0]["type"], "session_ready")
-        self.assertEqual(sent[1], {"type": "pong", "nonce": "n1"})
+        self.assertEqual(sent[1]["type"], "invalid_state")
+        self.assertEqual(sent[1]["command"], "stdin")
+        self.assertEqual(sent[2], {"type": "pong", "nonce": "n1"})
 
     def test_handle_run_session_ignores_unexpected_messages_without_crash(self):
         import backend.ws.run_session as run_session_module
@@ -402,6 +404,55 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         sent = [json.loads(item) for item in ws.sent]
         self.assertEqual(sent[0]["type"], "session_ready")
         self.assertEqual(sent[1]["type"], "compile_started")
+
+    def test_handle_run_session_forwards_stdout_and_relays_stdin(self):
+        import backend.ws.run_session as run_session_module
+
+        class FakeStrategy:
+            instances = []
+
+            def __init__(self):
+                self.stdin_payloads = []
+                self.started = False
+                FakeStrategy.instances.append(self)
+
+            def start(self, image, command):
+                self.started = True
+
+            def poll_stdout(self):
+                return "prompt> "
+
+            def send_stdin(self, data):
+                self.stdin_payloads.append(data)
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stdin","data":"42\\n"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        strategy = FakeStrategy.instances[0]
+        self.assertEqual(strategy.stdin_payloads, ["42\n"])
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertIn({"type": "stdout", "data": "prompt> "}, sent)
+
+    def test_handle_run_session_stdin_in_invalid_state_returns_safe_message(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"stdin","data":"ignored"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertEqual(sent[1]["type"], "invalid_state")
+        self.assertEqual(sent[1]["command"], "stdin")
+        self.assertEqual(sent[1]["state"], "idle")
 
 
 if __name__ == "__main__":
