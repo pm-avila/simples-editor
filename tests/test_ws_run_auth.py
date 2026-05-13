@@ -22,19 +22,24 @@ class WsHandshakeTokenExtractionTest(unittest.TestCase):
         spec.loader.exec_module(module)
         cls.module = module
 
-    def test_extracts_subprotocol_bearer_token(self):
-        headers = {"Sec-WebSocket-Protocol": "simples.v1,bearer,token-123"}
-
-        token = self.module.extract_token_from_handshake(headers, {})
-
-        self.assertEqual(token, "token-123")
-
     def test_extracts_subprotocol_bearer_dot_token(self):
         headers = {"Sec-WebSocket-Protocol": "simples.v1,bearer.token-abc"}
 
         token = self.module.extract_token_from_handshake(headers, {})
 
         self.assertEqual(token, "token-abc")
+
+    def test_rejects_subprotocol_bearer_comma_token_format(self):
+        headers = {"Sec-WebSocket-Protocol": "simples.v1,bearer,token-123"}
+
+        with self.assertRaisesRegex(self.module.HandshakeAuthError, "missing bearer token"):
+            self.module.extract_token_from_handshake(headers, {})
+
+    def test_rejects_subprotocol_bearer_space_token_format(self):
+        headers = {"Sec-WebSocket-Protocol": "simples.v1,bearer token-123"}
+
+        with self.assertRaisesRegex(self.module.HandshakeAuthError, "missing bearer token"):
+            self.module.extract_token_from_handshake(headers, {})
 
     def test_uses_query_token_as_fallback(self):
         headers = {}
@@ -62,7 +67,7 @@ class WsHandshakeAuthenticationTest(unittest.TestCase):
         token = jwt.encode({"sub": "user-123"}, "secret", algorithm="HS256")
 
         user_id = self.module.authenticate_ws_handshake(
-            {"Sec-WebSocket-Protocol": f"simples.v1,bearer,{token}"},
+            {"Sec-WebSocket-Protocol": f"simples.v1,bearer.{token}"},
             {},
             "secret",
         )
@@ -72,7 +77,7 @@ class WsHandshakeAuthenticationTest(unittest.TestCase):
     def test_authenticate_ws_handshake_wraps_auth_error(self):
         with self.assertRaisesRegex(self.module.HandshakeAuthError, "invalid token"):
             self.module.authenticate_ws_handshake(
-                {"Sec-WebSocket-Protocol": "simples.v1,bearer,not-a-jwt"},
+                {"Sec-WebSocket-Protocol": "simples.v1,bearer.not-a-jwt"},
                 {},
                 "secret",
             )
@@ -211,11 +216,29 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         handle_mock.assert_not_called()
         self.assertEqual(ws.closed_codes, [1011])
 
+    def test_ws_run_closes_with_1011_on_run_session_error(self):
+        app_module = self._load_app_module_with_callable_ws_run()
+        from backend.ws.run_session import RunSessionError
+
+        ws = FakeWs()
+        with patch.object(
+            app_module,
+            "load_supabase_auth_config",
+            return_value=SimpleNamespace(jwt_secret="secret"),
+        ), patch.object(
+            app_module,
+            "handle_run_session",
+            side_effect=RunSessionError("runtime failure"),
+        ):
+            app_module.ws_run(ws)
+
+        self.assertEqual(ws.closed_codes, [1011])
+
     def test_handle_run_session_sends_session_ready_idle_with_user_id(self):
         import backend.ws.run_session as run_session_module
 
         request = FakeRequest(
-            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"},
             args={},
         )
         ws = FakeWs(incoming=[None])
@@ -236,7 +259,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         import backend.ws.run_session as run_session_module
 
         request = FakeRequest(
-            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"},
             args={},
         )
         ws = FakeWs(incoming=[None])
@@ -254,7 +277,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         import backend.ws.run_session as run_session_module
 
         request = FakeRequest(
-            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"},
             args={},
         )
         ws = FakeWs(incoming=["{bad json", '{"payload":"ok"}', None])
@@ -282,13 +305,88 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         from backend.ws.handshake import HandshakeAuthError
 
         request = FakeRequest(
-            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,not-a-jwt"},
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.not-a-jwt"},
             args={},
         )
         ws = FakeWs(incoming=[None])
 
         with self.assertRaisesRegex(HandshakeAuthError, "invalid token"):
             run_session_module.handle_run_session(ws, request, "secret")
+
+    def test_handle_run_session_routes_compile_and_run_through_state_machine(self):
+        import backend.ws.run_session as run_session_module
+
+        class TrackingMachine:
+            start_compile_calls = 0
+
+            def __init__(self):
+                self.state = SimpleNamespace(value="idle")
+
+            def start_compile(self):
+                type(self).start_compile_calls += 1
+                self.state = SimpleNamespace(value="compiling")
+                return True
+
+            def accepts_stdin(self):
+                return False
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "SessionStateMachine", TrackingMachine):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertEqual(sent[0]["type"], "session_ready")
+        self.assertEqual(sent[1]["type"], "compile_started")
+        self.assertEqual(sent[1]["state"], "compiling")
+        self.assertEqual(TrackingMachine.start_compile_calls, 1)
+
+    def test_handle_run_session_routes_ping_and_ignores_non_executing_stdin(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(
+            incoming=[
+                '{"type":"stdin","data":"hello"}',
+                '{"type":"ping","nonce":"n1"}',
+                None,
+            ]
+        )
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertEqual(sent[0]["type"], "session_ready")
+        self.assertEqual(sent[1], {"type": "pong", "nonce": "n1"})
+
+    def test_handle_run_session_ignores_unexpected_messages_without_crash(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(
+            incoming=[
+                '{"type":"unknown"}',
+                "[]",
+                '{"type":"compile_and_run","extra":1}',
+                '{"type":"invalid"}',
+                None,
+            ]
+        )
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertEqual(sent[0]["type"], "session_ready")
+        self.assertEqual(sent[1]["type"], "compile_started")
 
 
 if __name__ == "__main__":

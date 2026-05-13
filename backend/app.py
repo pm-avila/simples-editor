@@ -11,6 +11,7 @@ from backend.compiler import compile_simples
 from backend.health import build_health_payload
 from backend.ws.handshake import HandshakeAuthError
 from backend.ws.run_session import handle_run_session
+from backend.ws.run_session import RunSessionError
 
 
 app = Flask(__name__)
@@ -58,6 +59,8 @@ if sock is not None:
             handle_run_session(ws, request, auth.jwt_secret)
         except HandshakeAuthError:
             ws.close(1008)
+        except RunSessionError:
+            ws.close(1011)
 
 
 def create_app():

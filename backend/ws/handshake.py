@@ -23,17 +23,9 @@ def _extract_token_from_subprotocol(headers):
         return None
 
     parts = [part.strip() for part in str(raw).split(",") if part.strip()]
-    for index, part in enumerate(parts):
+    for part in parts:
         lower = part.lower()
         if lower.startswith("bearer."):
-            token = part[7:].strip()
-            if token:
-                return token
-        if lower == "bearer" and index + 1 < len(parts):
-            token = parts[index + 1].strip()
-            if token:
-                return token
-        if lower.startswith("bearer "):
             token = part[7:].strip()
             if token:
                 return token
