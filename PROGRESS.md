@@ -40,7 +40,7 @@
 - [x] #27 feat(executor): implement PtyExecutionStrategy for interactive runs
 - [x] #28 feat(stream): bridge terminal I/O between WebSocket and PTY
 - [x] #29 feat(interactive): support leia end-to-end in the IDE
-- [ ] #30 feat(protocol): implement the run-session WebSocket event contract
+- [x] #30 feat(protocol): implement the run-session WebSocket event contract
 
 ## Sprint 5
 
