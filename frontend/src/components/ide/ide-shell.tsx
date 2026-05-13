@@ -9,6 +9,8 @@ import type { TerminalPaneHandle } from "./terminal-pane";
 import { Toolbar } from "./toolbar";
 import type { IdeStatus } from "./toolbar";
 import { compileCode } from "../../lib/compile-api";
+import { createRunSessionClient } from "../../lib/run-session-client";
+import type { RunSessionClient } from "../../lib/run-session-client";
 
 
 export function IdeShell() {
@@ -17,9 +19,9 @@ export function IdeShell() {
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
   const editorRef = useRef<MonacoEditorPaneHandle>(null);
   const terminalRef = useRef<TerminalPaneHandle>(null);
+  const runSessionRef = useRef<RunSessionClient | null>(null);
   const handleTerminalData = useCallback((data: string) => {
-    void data;
-    // TODO: forward terminal stdin to websocket transport.
+    runSessionRef.current?.sendStdin(data);
   }, []);
 
   function handleDoubleClick() {
@@ -45,6 +47,12 @@ export function IdeShell() {
       if (result.ok) {
         setNasmContent(result.nasm);
         terminalRef.current?.write("Compilação concluída com sucesso.\n");
+        if (!runSessionRef.current) {
+          runSessionRef.current = createRunSessionClient({
+            onStdout: (data) => terminalRef.current?.write(data),
+          });
+        }
+        runSessionRef.current?.start(code);
         setStatus("idle");
       } else {
         editor.setMarkers([result.error]);
@@ -64,7 +72,10 @@ export function IdeShell() {
       <Toolbar
         status={status}
         onRun={handleRun}
-        onStop={() => setStatus("idle")}
+        onStop={() => {
+          runSessionRef.current?.stop();
+          setStatus("idle");
+        }}
       />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
