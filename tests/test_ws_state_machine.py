@@ -26,14 +26,22 @@ class SessionStateMachineTest(unittest.TestCase):
     def test_start_compile_transitions_to_compiling(self):
         machine = SessionStateMachine()
 
-        machine.start_compile()
+        self.assertTrue(machine.start_compile())
 
         self.assertEqual(machine.state, SessionState.COMPILING)
+
+    def test_start_exec_transitions_to_executing_after_compile(self):
+        machine = SessionStateMachine()
+        machine.start_compile()
+
+        self.assertTrue(machine.start_exec())
+        self.assertEqual(machine.state, SessionState.EXECUTING)
 
     def test_invalid_stdin_in_idle_rejected(self):
         machine = SessionStateMachine()
 
         self.assertFalse(machine.accepts_stdin())
+        self.assertEqual(machine.state, SessionState.IDLE)
 
 
 if __name__ == "__main__":
