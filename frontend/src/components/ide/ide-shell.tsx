@@ -20,6 +20,27 @@ export function IdeShell() {
   const editorRef = useRef<MonacoEditorPaneHandle>(null);
   const terminalRef = useRef<TerminalPaneHandle>(null);
   const runSessionRef = useRef<RunSessionClient | null>(null);
+  const handleRunSessionEvent = useCallback((payload: Record<string, unknown>) => {
+    if (payload.type === "exec_started") {
+      setStatus("executing");
+      return;
+    }
+
+    if (payload.type === "exit" || payload.type === "timeout") {
+      setStatus("idle");
+      return;
+    }
+
+    if (payload.type === "runtime_error") {
+      setStatus("idle");
+      return;
+    }
+
+    if (payload.type === "rate_limited") {
+      terminalRef.current?.write("Limite de uso atingido. Tente novamente mais tarde.\n");
+      setStatus("idle");
+    }
+  }, []);
   const handleTerminalData = useCallback((data: string) => {
     runSessionRef.current?.sendStdin(data);
   }, []);
@@ -50,10 +71,11 @@ export function IdeShell() {
         if (!runSessionRef.current) {
           runSessionRef.current = createRunSessionClient({
             onStdout: (data) => terminalRef.current?.write(data),
+            onEvent: handleRunSessionEvent,
           });
         }
         runSessionRef.current?.start(code);
-        setStatus("idle");
+        setStatus("executing");
       } else {
         editor.setMarkers([result.error]);
         setNasmContent(`; Erro de compilação:\n; ${result.error.message}`);
@@ -70,19 +92,18 @@ export function IdeShell() {
   return (
     <div id="ide-shell">
       <Toolbar
-        status={status}
-        onRun={handleRun}
-        onStop={() => {
-          runSessionRef.current?.stop();
-          setStatus("idle");
-        }}
-      />
+          status={status}
+          onRun={handleRun}
+          onStop={() => {
+            runSessionRef.current?.stop();
+          }}
+        />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
           <div className="editor-area">
             <MonacoEditorPane
               ref={editorRef}
-              readOnly={status === "compiling"}
+              readOnly={status === "compiling" || status === "executing"}
             />
           </div>
         </Panel>

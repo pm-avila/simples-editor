@@ -3,8 +3,10 @@ import json
 import pathlib
 import sys
 import unittest
+from contextlib import redirect_stdout
 from types import ModuleType
 from types import SimpleNamespace
+import io
 from unittest.mock import patch
 
 import jwt
@@ -514,6 +516,50 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertIn("exit", event_types)
         self.assertIn("pong", event_types)
 
+    def test_handle_run_session_emits_structured_json_logs_for_execution(self):
+        import backend.ws.run_session as run_session_module
+
+        class FakeStrategy:
+            def start(self, image, command):
+                return None
+
+            def poll_stdout(self):
+                return ""
+
+            def send_stdin(self, data):
+                return None
+
+            def stop(self):
+                return None
+
+        request = FakeRequest(
+            headers={
+                "Sec-WebSocket-Protocol": "simples.v1,bearer.token",
+                "X-Request-ID": "req-123",
+                "X-Real-IP": "203.0.113.42",
+            },
+            args={},
+        )
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stop"}', None])
+        buffer = io.StringIO()
+
+        with redirect_stdout(buffer), patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        logs = [json.loads(line) for line in buffer.getvalue().splitlines() if line.strip()]
+        event_names = [item["event"] for item in logs]
+        self.assertIn("execution_started", event_names)
+        self.assertIn("execution_finished", event_names)
+        finished = next(item for item in logs if item["event"] == "execution_finished")
+        self.assertEqual(finished["logger"], "simples.executor")
+        self.assertEqual(finished["user_id"], "user-123")
+        self.assertEqual(finished["request_id"], "req-123")
+        self.assertEqual(finished["client_ip"], "203.0.113.42")
+        self.assertEqual(finished["exit_code"], 0)
+        self.assertIn("duration_ms", finished)
+
     def test_handle_run_session_bootstrap_error_emits_timeout_event(self):
         import backend.ws.run_session as run_session_module
         from backend.ws.execution import ExecutionStrategyError
@@ -532,6 +578,72 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         sent = [json.loads(item) for item in ws.sent]
         self.assertIn("timeout", [item["type"] for item in sent])
+
+    def test_handle_run_session_returns_rate_limited_event_before_session_ready(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=[None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(
+            run_session_module, "allow_execution_request", return_value=(False, 19)
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertEqual(sent[0]["type"], "rate_limited")
+        self.assertEqual(sent[0]["scope"], "execution")
+        self.assertEqual(sent[0]["retry_after"], 19)
+        self.assertEqual(len(sent), 1)
+
+    def test_handle_run_session_triggers_wall_clock_timeout(self):
+        import backend.ws.run_session as run_session_module
+
+        class FakeStrategy:
+            instances = []
+
+            def __init__(self):
+                self.stop_calls = 0
+                FakeStrategy.instances.append(self)
+
+            def start(self, image, command):
+                return None
+
+            def poll_stdout(self):
+                return ""
+
+            def send_stdin(self, data):
+                return None
+
+            def stop(self):
+                self.stop_calls += 1
+
+        class SlowWs(FakeWs):
+            def receive(self):
+                if self._incoming:
+                    item = self._incoming.pop(0)
+                    if item == "__pause__":
+                        import time
+
+                        time.sleep(0.05)
+                        return None
+                    return item
+                return None
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = SlowWs(incoming=['{"type":"compile_and_run"}', "__pause__"])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+            run_session_module.EXECUTION_TIMEOUT = 0.01
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertIn("timeout", [item["type"] for item in sent])
+        self.assertEqual(FakeStrategy.instances[0].stop_calls, 1)
 
 
 if __name__ == "__main__":

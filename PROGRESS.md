@@ -44,6 +44,8 @@
 
 ## Sprint 5
 
+_Status GitHub (2026-05-13): issues #31 a #39 estão abertas._
+
 - [ ] #31 feat(stop): wire the Stop action through the execution lifecycle
 - [ ] #32 feat(executor): enforce wall-clock execution timeout
 - [ ] #33 feat(sandbox): configure hard Docker stop timeout
@@ -64,4 +66,3 @@
 - [ ] #45 feat(deploy): configure a custom academic domain
 - [ ] #46 feat(presentation): prepare the final project presentation
 - [ ] #47 feat(retro): capture the team retrospective
-

@@ -65,6 +65,9 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertIn('"compile_and_run"', source)
         self.assertIn('"stdin"', source)
         self.assertIn("sendStdin", source)
+        self.assertIn('"exit"', source)
+        self.assertIn('"timeout"', source)
+        self.assertNotIn('socket.close();\n      socket = null;\n      pendingCode = null;', source)
 
     def test_ide_shell_wires_terminal_input_and_stdout_for_leia_flow(self):
         source = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
@@ -73,6 +76,9 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertRegex(source, re.compile(r"onStdout[\s\S]*terminalRef\.current\?\.write"))
         self.assertIn('terminalRef.current?.write("$ simplesc run\\n");', source)
         self.assertRegex(source, re.compile(r"runSessionRef\.current\?\.start\("))
+        self.assertRegex(source, re.compile(r'setStatus\("executing"\)'))
+        self.assertRegex(source, re.compile(r'readOnly=\{status === "compiling" \|\| status === "executing"\}'))
+        self.assertIn("rate_limited", source)
 
 
 if __name__ == "__main__":
