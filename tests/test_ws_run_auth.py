@@ -164,6 +164,20 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         self.assertEqual(ws.closed_codes, [1008])
 
+    def test_ws_run_closes_with_1011_when_auth_config_is_missing(self):
+        app_module = self._load_app_module_with_callable_ws_run()
+        ws = FakeWs()
+
+        with patch.object(
+            app_module,
+            "load_supabase_auth_config",
+            side_effect=KeyError("SUPABASE_JWT_SECRET"),
+        ), patch.object(app_module, "handle_run_session") as handle_mock:
+            app_module.ws_run(ws)
+
+        handle_mock.assert_not_called()
+        self.assertEqual(ws.closed_codes, [1011])
+
     def test_handle_run_session_sends_session_ready_idle_with_user_id(self):
         import backend.ws.run_session as run_session_module
 

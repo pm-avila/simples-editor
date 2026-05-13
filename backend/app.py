@@ -47,7 +47,11 @@ if sock is not None:
 
     @sock.route("/ws/run")
     def ws_run(ws):
-        auth = load_supabase_auth_config()
+        try:
+            auth = load_supabase_auth_config()
+        except (KeyError, ValueError):
+            ws.close(1011)
+            return
         try:
             handle_run_session(ws, request, auth.jwt_secret)
         except HandshakeAuthError:
