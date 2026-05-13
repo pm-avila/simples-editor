@@ -25,6 +25,10 @@ def _extract_token_from_subprotocol(headers):
     parts = [part.strip() for part in str(raw).split(",") if part.strip()]
     for index, part in enumerate(parts):
         lower = part.lower()
+        if lower.startswith("bearer."):
+            token = part[7:].strip()
+            if token:
+                return token
         if lower == "bearer" and index + 1 < len(parts):
             token = parts[index + 1].strip()
             if token:
@@ -75,4 +79,4 @@ def authenticate_ws_handshake(headers, query_args, jwt_secret):
         claims = decode_supabase_jwt(token, jwt_secret)
         return extract_user_id(claims)
     except AuthError as exc:
-        raise HandshakeAuthError(str(exc)) from exc
+        raise HandshakeAuthError("invalid token") from exc

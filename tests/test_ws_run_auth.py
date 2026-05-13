@@ -24,6 +24,13 @@ class WsHandshakeTokenExtractionTest(unittest.TestCase):
 
         self.assertEqual(token, "token-123")
 
+    def test_extracts_subprotocol_bearer_dot_token(self):
+        headers = {"Sec-WebSocket-Protocol": "simples.v1,bearer.token-abc"}
+
+        token = self.module.extract_token_from_handshake(headers, {})
+
+        self.assertEqual(token, "token-abc")
+
     def test_uses_query_token_as_fallback(self):
         headers = {}
         query_args = {"token": "query-token-456"}
@@ -61,6 +68,16 @@ class WsHandshakeAuthenticationTest(unittest.TestCase):
         with self.assertRaisesRegex(self.module.HandshakeAuthError, "invalid token"):
             self.module.authenticate_ws_handshake(
                 {"Sec-WebSocket-Protocol": "simples.v1,bearer,not-a-jwt"},
+                {},
+                "secret",
+            )
+
+    def test_authenticate_ws_handshake_normalizes_auth_error_message(self):
+        token = jwt.encode({}, "secret", algorithm="HS256")
+
+        with self.assertRaisesRegex(self.module.HandshakeAuthError, "invalid token"):
+            self.module.authenticate_ws_handshake(
+                {"Sec-WebSocket-Protocol": f"simples.v1,bearer.{token}"},
                 {},
                 "secret",
             )
