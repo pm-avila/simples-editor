@@ -78,8 +78,8 @@ def _client_ip(request):
     return getattr(request, "remote_addr", None) or "unknown"
 
 
-def handle_run_session(ws, request, jwt_secret):
-    user_id = authenticate_ws_handshake(request.headers, request.args, jwt_secret)
+def handle_run_session(ws, request, jwt_secret, supabase_url=None):
+    user_id = authenticate_ws_handshake(request.headers, request.args, jwt_secret, supabase_url=supabase_url)
     request_id = (
         request.headers.get("X-Request-ID")
         or request.headers.get("X-Request-Id")

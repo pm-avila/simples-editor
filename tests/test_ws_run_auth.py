@@ -252,7 +252,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             app_module,
             "load_supabase_auth_config",
-            return_value=SimpleNamespace(jwt_secret="secret"),
+            return_value=SimpleNamespace(jwt_secret="secret", url="https://example.supabase.co"),
         ), patch.object(
             app_module,
             "handle_run_session",
@@ -284,7 +284,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             app_module,
             "load_supabase_auth_config",
-            return_value=SimpleNamespace(jwt_secret="secret"),
+            return_value=SimpleNamespace(jwt_secret="secret", url="https://example.supabase.co"),
         ), patch.object(
             app_module,
             "handle_run_session",
@@ -308,7 +308,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         ) as auth_mock:
             run_session_module.handle_run_session(ws, request, "secret")
 
-        auth_mock.assert_called_once_with(request.headers, request.args, "secret")
+        auth_mock.assert_called_once_with(request.headers, request.args, "secret", supabase_url=None)
         self.assertEqual(len(ws.sent), 1)
         payload = json.loads(ws.sent[0])
         self.assertEqual(payload["type"], "session_ready")

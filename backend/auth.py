@@ -1,3 +1,6 @@
+import json
+import urllib.request
+
 import jwt
 from functools import wraps
 
@@ -6,7 +9,50 @@ class AuthError(Exception):
     """Raised when backend authentication fails."""
 
 
-def decode_supabase_jwt(token, jwt_secret):
+_jwks_cache: dict[str, object] = {}
+
+
+def _fetch_ec_public_key(supabase_url: str, kid: str):
+    """Fetch and cache EC public key from Supabase JWKS endpoint."""
+    cache_key = f"{supabase_url}#{kid}"
+    if cache_key in _jwks_cache:
+        return _jwks_cache[cache_key]
+
+    jwks_uri = supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
+    try:
+        with urllib.request.urlopen(jwks_uri, timeout=5) as resp:
+            jwks = json.loads(resp.read())
+    except Exception as exc:
+        raise AuthError("failed to fetch JWKS") from exc
+
+    from jwt.algorithms import ECAlgorithm  # requires cryptography package
+    for key in jwks.get("keys", []):
+        if key.get("kid") == kid:
+            pub_key = ECAlgorithm.from_jwk(json.dumps(key))
+            _jwks_cache[cache_key] = pub_key
+            return pub_key
+
+    raise AuthError(f"no key with kid={kid} in JWKS")
+
+
+def decode_supabase_jwt(token, jwt_secret, supabase_url=None):
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.PyJWTError as exc:
+        raise AuthError("invalid token") from exc
+
+    alg = header.get("alg", "HS256")
+
+    if alg == "ES256":
+        if not supabase_url:
+            raise AuthError("ES256 token but supabase_url not provided")
+        kid = header.get("kid")
+        pub_key = _fetch_ec_public_key(supabase_url, kid)
+        try:
+            return jwt.decode(token, pub_key, algorithms=["ES256"])
+        except jwt.PyJWTError as exc:
+            raise AuthError("invalid token") from exc
+
     try:
         return jwt.decode(token, jwt_secret, algorithms=["HS256"])
     except jwt.PyJWTError as exc:
