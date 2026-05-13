@@ -34,8 +34,8 @@
 
 ## Sprint 4
 
-- [ ] #24 feat(ws): implement authenticated /ws/run endpoint
-- [ ] #25 feat(terminal): integrate xterm.js into the terminal panel
+- [x] #24 feat(ws): implement authenticated /ws/run endpoint
+- [x] #25 feat(terminal): integrate xterm.js into the terminal panel
 - [x] #26 feat(sandbox): build the simples-runner execution image
 - [x] #27 feat(executor): implement PtyExecutionStrategy for interactive runs
 - [x] #28 feat(stream): bridge terminal I/O between WebSocket and PTY
