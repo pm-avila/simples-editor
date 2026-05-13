@@ -3,6 +3,7 @@ import unittest
 import importlib.util
 
 import jwt
+from unittest.mock import patch
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -47,6 +48,30 @@ class BackendJwtCoreTest(unittest.TestCase):
     def test_extract_user_id_rejects_missing_sub(self):
         with self.assertRaises(self.module.AuthError):
             self.module.extract_user_id({})
+
+    def test_fetch_jwks_json_falls_back_to_curl_when_urlopen_fails(self):
+        expected = {"keys": [{"kid": "kid-123"}]}
+
+        with patch.object(
+            self.module.urllib.request,
+            "urlopen",
+            side_effect=TimeoutError("timed out"),
+        ), patch.object(
+            self.module.subprocess,
+            "run",
+            return_value=type(
+                "Completed",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": '{"keys":[{"kid":"kid-123"}]}',
+                    "stderr": "",
+                },
+            )(),
+        ):
+            jwks = self.module._fetch_jwks_json("https://example.supabase.co")
+
+        self.assertEqual(jwks, expected)
 
 
 from dataclasses import dataclass

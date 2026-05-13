@@ -1,4 +1,5 @@
 import json
+import subprocess
 import urllib.request
 
 import jwt
@@ -12,18 +13,37 @@ class AuthError(Exception):
 _jwks_cache: dict[str, object] = {}
 
 
+def _fetch_jwks_json(supabase_url: str) -> dict:
+    jwks_uri = supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
+    try:
+        with urllib.request.urlopen(jwks_uri, timeout=5) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        # Fallback for transient TLS issues seen with urllib in some containers.
+        try:
+            result = subprocess.run(
+                ["curl", "-fsSL", "--max-time", "8", jwks_uri],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except Exception as exc:
+            raise AuthError("failed to fetch JWKS") from exc
+        if result.returncode != 0:
+            raise AuthError("failed to fetch JWKS")
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise AuthError("failed to fetch JWKS") from exc
+
+
 def _fetch_ec_public_key(supabase_url: str, kid: str):
     """Fetch and cache EC public key from Supabase JWKS endpoint."""
     cache_key = f"{supabase_url}#{kid}"
     if cache_key in _jwks_cache:
         return _jwks_cache[cache_key]
 
-    jwks_uri = supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
-    try:
-        with urllib.request.urlopen(jwks_uri, timeout=5) as resp:
-            jwks = json.loads(resp.read())
-    except Exception as exc:
-        raise AuthError("failed to fetch JWKS") from exc
+    jwks = _fetch_jwks_json(supabase_url)
 
     from jwt.algorithms import ECAlgorithm  # requires cryptography package
     for key in jwks.get("keys", []):
