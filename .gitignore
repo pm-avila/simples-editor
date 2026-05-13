@@ -38,6 +38,9 @@ htmlcov/
 # Compiled binaries
 backend/simples-compiler/simplesc
 
+# Node
+frontend/node_modules/
+
 # Worktree clones / review checkouts
 .review-feat24/
 
