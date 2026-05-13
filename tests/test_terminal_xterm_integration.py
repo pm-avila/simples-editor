@@ -32,14 +32,21 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertRegex(source, re.compile(r"clear:\s*\(\)\s*=>\s*void"))
         self.assertRegex(source, re.compile(r"focus:\s*\(\)\s*=>\s*void"))
         self.assertRegex(source, re.compile(r"onData\??:\s*\(data:\s*string\)\s*=>\s*void"))
+        self.assertRegex(source, re.compile(r"const\s+onDataRef\s*=\s*useRef\(onData\)"))
+        self.assertRegex(source, re.compile(r"onDataRef\.current\s*=\s*onData"))
+        self.assertRegex(source, re.compile(r"terminal\.onData\(\(data\)\s*=>\s*onDataRef\.current\?\.\(data\)\)"))
+        self.assertRegex(source, re.compile(r"useEffect\(\(\)\s*=>\s*\{[\s\S]*\},\s*\[\s*\]\s*\)"))
 
     def test_ide_shell_wires_terminal_pane_ref_and_run_output_contract(self):
         source = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
         self.assertIn('import type { TerminalPaneHandle } from "./terminal-pane";', source)
         self.assertRegex(source, re.compile(r"const\s+terminalRef\s*=\s*useRef<TerminalPaneHandle>\(null\)"))
+        self.assertRegex(
+            source, re.compile(r"const\s+handleTerminalData\s*=\s*useCallback\(\(data:\s*string\)\s*=>\s*\{")
+        )
         self.assertRegex(source, re.compile(r"terminalRef\.current\?\.(?:write|clear)\("))
         self.assertRegex(source, re.compile(r"<TerminalPane[\s\S]*ref=\{terminalRef\}"))
-        self.assertRegex(source, re.compile(r"onData=\{\(data:\s*string\)\s*=>\s*\{[\s\S]*\}\}"))
+        self.assertRegex(source, re.compile(r"onData=\{handleTerminalData\}"))
 
 
 if __name__ == "__main__":

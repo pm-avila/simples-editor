@@ -19,6 +19,11 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
 ) {
   const terminalHostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const onDataRef = useRef(onData);
+
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
 
   useEffect(() => {
     const host = terminalHostRef.current;
@@ -29,7 +34,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
     terminal.loadAddon(fitAddon);
     terminal.open(host);
     fitAddon.fit();
-    const disposeOnData = terminal.onData((data) => onData?.(data));
+    const disposeOnData = terminal.onData((data) => onDataRef.current?.(data));
     const handleResize = () => fitAddon.fit();
     window.addEventListener("resize", handleResize);
 
@@ -41,7 +46,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
       terminal.dispose();
       terminalRef.current = null;
     };
-  }, [onData]);
+  }, []);
 
   useImperativeHandle(
     ref,

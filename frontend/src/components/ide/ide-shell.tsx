@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { MonacoEditorPane } from "./monaco-editor-pane";
@@ -17,6 +17,10 @@ export function IdeShell() {
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
   const editorRef = useRef<MonacoEditorPaneHandle>(null);
   const terminalRef = useRef<TerminalPaneHandle>(null);
+  const handleTerminalData = useCallback((data: string) => {
+    void data;
+    // TODO: forward terminal stdin to websocket transport.
+  }, []);
 
   function handleDoubleClick() {
     const panel = nasmPanelRef.current;
@@ -79,10 +83,7 @@ export function IdeShell() {
       <div className="terminal-area">
         <TerminalPane
           ref={terminalRef}
-          onData={(data: string) => {
-            void data;
-            // TODO: forward terminal stdin to websocket transport.
-          }}
+          onData={handleTerminalData}
         />
       </div>
     </div>
