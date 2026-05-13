@@ -19,6 +19,11 @@ def handle_run_session(ws, request, jwt_secret):
     user_id = authenticate_ws_handshake(request.headers, request.args, jwt_secret)
     machine = SessionStateMachine()
     execution = None
+
+    def reset_to_idle():
+        if hasattr(machine, "reset_idle"):
+            machine.reset_idle()
+
     try:
         _send_json(
             ws,
@@ -44,27 +49,37 @@ def handle_run_session(ws, request, jwt_secret):
 
             message_type = message.get("type")
             if message_type == "compile_and_run":
-                if machine.start_compile():
+                if not machine.start_compile():
                     _send_json(
                         ws,
                         {
-                            "type": "compile_started",
+                            "type": "invalid_state",
+                            "command": "compile_and_run",
                             "state": machine.state.value,
                         },
                     )
-                    try:
-                        execution = PtyExecutionStrategy()
-                        sandbox_image = os.environ.get("SANDBOX_IMAGE", "simples-runner:dev")
-                        execution.start(image=sandbox_image, command=["/bin/sh"])
-                        machine.start_exec()
-                        stdout = execution.poll_stdout()
-                        if stdout:
-                            _send_json(ws, {"type": "stdout", "data": stdout})
-                    except ExecutionStrategyError:
-                        _send_json(
-                            ws,
-                            {"type": "runtime_error", "message": "execution bootstrap failed"},
-                        )
+                    continue
+                _send_json(
+                    ws,
+                    {
+                        "type": "compile_started",
+                        "state": machine.state.value,
+                    },
+                )
+                _send_json(ws, {"type": "asm_generated"})
+                try:
+                    execution = PtyExecutionStrategy()
+                    sandbox_image = os.environ.get("SANDBOX_IMAGE", "simples-runner:dev")
+                    execution.start(image=sandbox_image, command=["/bin/sh"])
+                    can_start_exec = hasattr(machine, "start_exec")
+                    if can_start_exec and machine.start_exec():
+                        _send_json(ws, {"type": "exec_started", "state": machine.state.value})
+                    stdout = execution.poll_stdout()
+                    if stdout:
+                        _send_json(ws, {"type": "stdout", "data": stdout})
+                except ExecutionStrategyError:
+                    reset_to_idle()
+                    _send_json(ws, {"type": "timeout"})
                 continue
 
             if message_type == "ping":
@@ -92,6 +107,29 @@ def handle_run_session(ws, request, jwt_secret):
                     _send_json(
                         ws,
                         {"type": "runtime_error", "message": "stdin relay failed"},
+                    )
+                continue
+
+            if message_type == "stop":
+                if not machine.accepts_stdin():
+                    _send_json(
+                        ws,
+                        {
+                            "type": "invalid_state",
+                            "command": "stop",
+                            "state": machine.state.value,
+                        },
+                    )
+                    continue
+                try:
+                    if execution is not None:
+                        execution.stop()
+                    reset_to_idle()
+                    _send_json(ws, {"type": "exit", "exit_code": 0})
+                except ExecutionStrategyError:
+                    _send_json(
+                        ws,
+                        {"type": "runtime_error", "message": "stop failed"},
                     )
                 continue
     except Exception as exc:
