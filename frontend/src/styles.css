@@ -91,6 +91,17 @@ body {
   color: #858585;
 }
 
+.terminal-pane__host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.terminal-pane .xterm {
+  height: 100%;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
