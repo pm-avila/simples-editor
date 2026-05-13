@@ -2,6 +2,7 @@ import pathlib
 import importlib.util
 import sys
 import unittest
+from unittest.mock import patch
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -73,6 +74,34 @@ class HealthEndpointCompatibilityTest(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.get_json(), {"status": "ok"})
+
+
+class HealthEndpointWithoutSockDependencyTest(unittest.TestCase):
+    def test_backend_app_imports_without_flask_sock_and_http_routes_work(self):
+        module_path = ROOT / "backend" / "app.py"
+        spec = importlib.util.spec_from_file_location("backend.app_without_sock", module_path)
+        module = importlib.util.module_from_spec(spec)
+        original_import = __import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "flask_sock":
+                raise ModuleNotFoundError("No module named 'flask_sock'")
+            return original_import(name, globals, locals, fromlist, level)
+
+        with patch("builtins.__import__", side_effect=fake_import):
+            spec.loader.exec_module(module)
+
+        app = module.create_app()
+        rules = {rule.rule for rule in app.url_map.iter_rules()}
+        self.assertIn("/", rules)
+        self.assertIn("/health", rules)
+        self.assertIn("/api/health", rules)
+        self.assertIn("/api/compile", rules)
+        self.assertNotIn("/ws/run", rules)
+
+        response = app.test_client().get("/api/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["status"], "ok")
 
 
 class HealthEndpointReadmeTest(unittest.TestCase):

@@ -1,10 +1,33 @@
 from flask import Flask, jsonify, request
 
+
+def _is_optional_flask_sock_import_error(exc):
+    if exc.name == "flask_sock":
+        return True
+
+    if exc.name is not None:
+        return False
+
+    return "No module named" in str(exc) and "'flask_sock'" in str(exc)
+
+
+try:
+    from flask_sock import Sock
+except ModuleNotFoundError as exc:
+    if not _is_optional_flask_sock_import_error(exc):
+        raise
+    Sock = None
+
+from backend.auth_config import load_supabase_auth_config
 from backend.compiler import compile_simples
 from backend.health import build_health_payload
+from backend.ws.handshake import HandshakeAuthError
+from backend.ws.run_session import handle_run_session
+from backend.ws.run_session import RunSessionError
 
 
 app = Flask(__name__)
+sock = Sock(app) if Sock is not None else None
 
 
 @app.route("/")
@@ -33,6 +56,23 @@ def api_compile():
     if result["ok"]:
         return jsonify({"nasm": result["nasm"]}), 200
     return jsonify({"error": result["error"]}), 422
+
+
+if sock is not None:
+
+    @sock.route("/ws/run")
+    def ws_run(ws):
+        try:
+            auth = load_supabase_auth_config()
+        except (KeyError, ValueError):
+            ws.close(1011)
+            return
+        try:
+            handle_run_session(ws, request, auth.jwt_secret)
+        except HandshakeAuthError:
+            ws.close(1008)
+        except RunSessionError:
+            ws.close(1011)
 
 
 def create_app():
