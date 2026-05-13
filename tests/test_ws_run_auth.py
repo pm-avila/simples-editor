@@ -454,6 +454,85 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(sent[1]["command"], "stdin")
         self.assertEqual(sent[1]["state"], "idle")
 
+    def test_handle_run_session_emits_compile_protocol_sequence(self):
+        import backend.ws.run_session as run_session_module
+
+        class FakeStrategy:
+            def start(self, image, command):
+                return None
+
+            def poll_stdout(self):
+                return "ok\n"
+
+            def send_stdin(self, data):
+                return None
+
+            def stop(self):
+                return None
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        event_types = [item["type"] for item in sent]
+        self.assertIn("compile_started", event_types)
+        self.assertIn("asm_generated", event_types)
+        self.assertIn("exec_started", event_types)
+        self.assertIn("stdout", event_types)
+
+    def test_handle_run_session_stop_and_ping_keep_connection_alive(self):
+        import backend.ws.run_session as run_session_module
+
+        class FakeStrategy:
+            def start(self, image, command):
+                return None
+
+            def poll_stdout(self):
+                return ""
+
+            def send_stdin(self, data):
+                return None
+
+            def stop(self):
+                return None
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stop"}', '{"type":"ping","nonce":"n2"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        event_types = [item["type"] for item in sent]
+        self.assertIn("exit", event_types)
+        self.assertIn("pong", event_types)
+
+    def test_handle_run_session_bootstrap_error_emits_timeout_event(self):
+        import backend.ws.run_session as run_session_module
+        from backend.ws.execution import ExecutionStrategyError
+
+        class FailingStrategy:
+            def start(self, image, command):
+                raise ExecutionStrategyError("boom")
+
+        request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(run_session_module, "PtyExecutionStrategy", FailingStrategy):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        sent = [json.loads(item) for item in ws.sent]
+        self.assertIn("timeout", [item["type"] for item in sent])
+
 
 if __name__ == "__main__":
     unittest.main()
