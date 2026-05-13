@@ -37,7 +37,7 @@ export function IdeShell() {
     }
 
     if (payload.type === "rate_limited") {
-      terminalRef.current?.write("Limite de uso atingido. Tente novamente mais tarde.\n");
+      terminalRef.current?.write("Limite de uso atingido. Tente novamente mais tarde.\r\n");
       setStatus("idle");
     }
   }, []);
@@ -65,13 +65,13 @@ export function IdeShell() {
     const code = editor.getValue();
     editor.clearMarkers();
     terminalRef.current?.clear();
-    terminalRef.current?.write("$ simplesc run\n");
+    terminalRef.current?.write("$ simplesc run\r\n");
     setStatus("compiling");
     try {
       const result = await compileCode(code);
       if (result.ok) {
         setNasmContent(result.nasm);
-        terminalRef.current?.write("Compilação concluída com sucesso.\n");
+        terminalRef.current?.write("Compilação concluída com sucesso.\r\n");
         if (!runSessionRef.current) {
           runSessionRef.current = createRunSessionClient({
             onStdout: (data) => terminalRef.current?.write(data),
@@ -84,12 +84,12 @@ export function IdeShell() {
       } else {
         editor.setMarkers([result.error]);
         setNasmContent(`; Erro de compilação:\n; ${result.error.message}`);
-        terminalRef.current?.write(`Erro de compilação: ${result.error.message}\n`);
+        terminalRef.current?.write(`Erro de compilação: ${result.error.message}\r\n`);
         setStatus("compile_error");
       }
     } catch (error) {
       setNasmContent("");
-      terminalRef.current?.write(`Falha inesperada na compilação: ${String(error)}\n`);
+      terminalRef.current?.write(`Falha inesperada na compilação: ${String(error)}\r\n`);
       setStatus("idle");
     }
   }

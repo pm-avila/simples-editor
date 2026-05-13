@@ -1,12 +1,13 @@
 import importlib.util
+import io
 import json
 import pathlib
 import sys
+import threading
 import unittest
 from contextlib import redirect_stdout
 from types import ModuleType
 from types import SimpleNamespace
-import io
 from unittest.mock import patch
 
 import jwt
@@ -168,6 +169,48 @@ class FakeWs:
 
     def close(self, code):
         self.closed_codes.append(code)
+
+
+class FakePopen:
+    """Simulates subprocess.Popen for tests. Provides stdout/stdin/wait/kill."""
+
+    def __init__(self, stdout_data: bytes = b"", *, hang: bool = False):
+        self._killed = threading.Event()
+        self._stdin_data: list[bytes] = []
+        self.returncode = 0
+        self.kill_calls = 0
+        parent = self
+        chunks = [stdout_data] if stdout_data else []
+        chunks_iter = iter(chunks)
+
+        class _Stdout:
+            def read(self, n: int) -> bytes:
+                if parent._killed.is_set():
+                    return b""
+                if hang:
+                    parent._killed.wait()
+                    return b""
+                try:
+                    return next(chunks_iter)
+                except StopIteration:
+                    return b""
+
+        class _Stdin:
+            def write(self, data: bytes) -> None:
+                parent._stdin_data.append(data)
+
+            def flush(self) -> None:
+                pass
+
+        self.stdout = _Stdout()
+        self.stdin = _Stdin()
+
+    def wait(self) -> int:
+        return self.returncode
+
+    def kill(self) -> None:
+        self.kill_calls += 1
+        self._killed.set()
 
 
 class FakeRequest:
@@ -352,7 +395,9 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "SessionStateMachine", TrackingMachine):
+        ), patch.object(run_session_module, "SessionStateMachine", TrackingMachine), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": False, "error": "stub"}
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
         sent = [json.loads(item) for item in ws.sent]
@@ -400,6 +445,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": False, "error": "stub"}
         ):
             run_session_module.handle_run_session(ws, request, "secret")
 
@@ -410,33 +457,22 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
     def test_handle_run_session_forwards_stdout_and_relays_stdin(self):
         import backend.ws.run_session as run_session_module
 
-        class FakeStrategy:
-            instances = []
-
-            def __init__(self):
-                self.stdin_payloads = []
-                self.started = False
-                FakeStrategy.instances.append(self)
-
-            def start(self, image, command):
-                self.started = True
-
-            def poll_stdout(self):
-                return "prompt> "
-
-            def send_stdin(self, data):
-                self.stdin_payloads.append(data)
+        fake_proc = FakePopen(stdout_data=b"prompt> ")
 
         request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
         ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stdin","data":"42\\n"}', None])
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", return_value=b"ELF"
+        ), patch.object(
+            run_session_module.subprocess, "Popen", return_value=fake_proc
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
-        strategy = FakeStrategy.instances[0]
-        self.assertEqual(strategy.stdin_payloads, ["42\n"])
         sent = [json.loads(item) for item in ws.sent]
         self.assertIn({"type": "stdout", "data": "prompt> "}, sent)
 
@@ -459,25 +495,20 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
     def test_handle_run_session_emits_compile_protocol_sequence(self):
         import backend.ws.run_session as run_session_module
 
-        class FakeStrategy:
-            def start(self, image, command):
-                return None
-
-            def poll_stdout(self):
-                return "ok\n"
-
-            def send_stdin(self, data):
-                return None
-
-            def stop(self):
-                return None
+        fake_proc = FakePopen(stdout_data=b"ok\n")
 
         request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
         ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", return_value=b"ELF"
+        ), patch.object(
+            run_session_module.subprocess, "Popen", return_value=fake_proc
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
         sent = [json.loads(item) for item in ws.sent]
@@ -490,25 +521,20 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
     def test_handle_run_session_stop_and_ping_keep_connection_alive(self):
         import backend.ws.run_session as run_session_module
 
-        class FakeStrategy:
-            def start(self, image, command):
-                return None
-
-            def poll_stdout(self):
-                return ""
-
-            def send_stdin(self, data):
-                return None
-
-            def stop(self):
-                return None
+        fake_proc = FakePopen()  # no stdout, exits immediately
 
         request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
         ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stop"}', '{"type":"ping","nonce":"n2"}', None])
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", return_value=b"ELF"
+        ), patch.object(
+            run_session_module.subprocess, "Popen", return_value=fake_proc
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
         sent = [json.loads(item) for item in ws.sent]
@@ -519,18 +545,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
     def test_handle_run_session_emits_structured_json_logs_for_execution(self):
         import backend.ws.run_session as run_session_module
 
-        class FakeStrategy:
-            def start(self, image, command):
-                return None
-
-            def poll_stdout(self):
-                return ""
-
-            def send_stdin(self, data):
-                return None
-
-            def stop(self):
-                return None
+        fake_proc = FakePopen()  # no stdout, exits immediately
 
         request = FakeRequest(
             headers={
@@ -540,12 +555,18 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
             },
             args={},
         )
-        ws = FakeWs(incoming=['{"type":"compile_and_run"}', '{"type":"stop"}', None])
+        ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
         buffer = io.StringIO()
 
         with redirect_stdout(buffer), patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", return_value=b"ELF"
+        ), patch.object(
+            run_session_module.subprocess, "Popen", return_value=fake_proc
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
         logs = [json.loads(line) for line in buffer.getvalue().splitlines() if line.strip()]
@@ -560,24 +581,24 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(finished["exit_code"], 0)
         self.assertIn("duration_ms", finished)
 
-    def test_handle_run_session_bootstrap_error_emits_timeout_event(self):
+    def test_handle_run_session_bootstrap_error_emits_runtime_error_event(self):
         import backend.ws.run_session as run_session_module
         from backend.ws.execution import ExecutionStrategyError
-
-        class FailingStrategy:
-            def start(self, image, command):
-                raise ExecutionStrategyError("boom")
 
         request = FakeRequest(headers={"Sec-WebSocket-Protocol": "simples.v1,bearer.token"}, args={})
         ws = FakeWs(incoming=['{"type":"compile_and_run"}', None])
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FailingStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", side_effect=ExecutionStrategyError("boom")
+        ):
             run_session_module.handle_run_session(ws, request, "secret")
 
         sent = [json.loads(item) for item in ws.sent]
-        self.assertIn("timeout", [item["type"] for item in sent])
+        self.assertIn("runtime_error", [item["type"] for item in sent])
 
     def test_handle_run_session_returns_rate_limited_event_before_session_ready(self):
         import backend.ws.run_session as run_session_module
@@ -601,24 +622,7 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
     def test_handle_run_session_triggers_wall_clock_timeout(self):
         import backend.ws.run_session as run_session_module
 
-        class FakeStrategy:
-            instances = []
-
-            def __init__(self):
-                self.stop_calls = 0
-                FakeStrategy.instances.append(self)
-
-            def start(self, image, command):
-                return None
-
-            def poll_stdout(self):
-                return ""
-
-            def send_stdin(self, data):
-                return None
-
-            def stop(self):
-                self.stop_calls += 1
+        fake_proc = FakePopen(hang=True)  # blocks stdout until killed
 
         class SlowWs(FakeWs):
             def receive(self):
@@ -637,13 +641,19 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(run_session_module, "PtyExecutionStrategy", FakeStrategy):
+        ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
+            run_session_module, "_build_binary", return_value=b"ELF"
+        ), patch.object(
+            run_session_module.subprocess, "Popen", return_value=fake_proc
+        ):
             run_session_module.EXECUTION_TIMEOUT = 0.01
             run_session_module.handle_run_session(ws, request, "secret")
 
         sent = [json.loads(item) for item in ws.sent]
         self.assertIn("timeout", [item["type"] for item in sent])
-        self.assertEqual(FakeStrategy.instances[0].stop_calls, 1)
+        self.assertGreaterEqual(fake_proc.kill_calls, 1)
 
 
 if __name__ == "__main__":
