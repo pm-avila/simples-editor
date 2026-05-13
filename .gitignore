@@ -37,3 +37,11 @@ htmlcov/
 
 # Compiled binaries
 backend/simples-compiler/simplesc
+
+# Worktree clones / review checkouts
+.review-feat24/
+
+# Temp agent / session files
+.agents/
+issue24.json
+pr71.json
