@@ -8,7 +8,7 @@ interface NasmPaneProps {
 }
 
 const PLACEHOLDER = "; Execute o programa para ver o assembly gerado.";
-const COMPILING   = "; Compilando…";
+const COMPILING   = "; compilando...";
 
 export function NasmPane({ status = "idle", value = "" }: NasmPaneProps) {
   let editorValue: string;
