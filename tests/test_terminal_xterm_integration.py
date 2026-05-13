@@ -33,6 +33,14 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertRegex(source, re.compile(r"focus:\s*\(\)\s*=>\s*void"))
         self.assertRegex(source, re.compile(r"onData\??:\s*\(data:\s*string\)\s*=>\s*void"))
 
+    def test_ide_shell_wires_terminal_pane_ref_and_run_output_contract(self):
+        source = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
+        self.assertIn('import type { TerminalPaneHandle } from "./terminal-pane";', source)
+        self.assertRegex(source, re.compile(r"const\s+terminalRef\s*=\s*useRef<TerminalPaneHandle>\(null\)"))
+        self.assertRegex(source, re.compile(r"terminalRef\.current\?\.(?:write|clear)\("))
+        self.assertRegex(source, re.compile(r"<TerminalPane[\s\S]*ref=\{terminalRef\}"))
+        self.assertRegex(source, re.compile(r"onData=\{\(data:\s*string\)\s*=>\s*\{[\s\S]*\}\}"))
+
 
 if __name__ == "__main__":
     unittest.main()
