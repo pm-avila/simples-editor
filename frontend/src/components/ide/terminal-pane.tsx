@@ -29,19 +29,36 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
     const host = terminalHostRef.current;
     if (!host) return;
 
-    const terminal = new Terminal();
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontFamily: '"Cascadia Code", "Fira Code", Menlo, Consolas, monospace',
+      fontSize: 13,
+      theme: {
+        background: "#1e1e1e",
+        foreground: "#d4d4d4",
+      },
+    });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
     terminal.open(host);
-    fitAddon.fit();
+
+    const fit = () => {
+      try { fitAddon.fit(); } catch { /* ignore if not ready */ }
+    };
+
+    // Defer first fit so the host has final dimensions
+    const rafId = requestAnimationFrame(() => fit());
+
     const disposeOnData = terminal.onData((data) => onDataRef.current?.(data));
-    const handleResize = () => fitAddon.fit();
-    window.addEventListener("resize", handleResize);
+
+    const resizeObserver = new ResizeObserver(() => fit());
+    resizeObserver.observe(host);
 
     terminalRef.current = terminal;
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
       disposeOnData.dispose();
       terminal.dispose();
       terminalRef.current = null;
@@ -59,9 +76,9 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
   );
 
   return (
-    <section className="terminal-pane" style={{ alignItems: "stretch", flexDirection: "column", gap: 8 }}>
+    <section className="terminal-pane">
       <span className="terminal-pane__label">Terminal</span>
-      <div className="terminal-pane__host" ref={terminalHostRef} style={{ flex: 1, minHeight: 0, width: "100%" }} />
+      <div className="terminal-pane__host" ref={terminalHostRef} />
     </section>
   );
 });

@@ -41,6 +41,10 @@ export function IdeShell() {
       setStatus("idle");
     }
   }, []);
+
+  const handleRunSessionClose = useCallback(() => {
+    setStatus((prev) => (prev === "executing" ? "idle" : prev));
+  }, []);
   const handleTerminalData = useCallback((data: string) => {
     runSessionRef.current?.sendStdin(data);
   }, []);
@@ -72,6 +76,7 @@ export function IdeShell() {
           runSessionRef.current = createRunSessionClient({
             onStdout: (data) => terminalRef.current?.write(data),
             onEvent: handleRunSessionEvent,
+            onClose: handleRunSessionClose,
           });
         }
         runSessionRef.current?.start(code);

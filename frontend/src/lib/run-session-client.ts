@@ -1,6 +1,7 @@
 export type RunSessionClientEvents = {
   onStdout?: (data: string) => void;
   onEvent?: (payload: Record<string, unknown>) => void;
+  onClose?: () => void;
 };
 
 export type RunSessionClient = {
@@ -44,10 +45,19 @@ export function createRunSessionClient(events: RunSessionClientEvents = {}): Run
         }
         if (payload.type === "exit" || payload.type === "timeout") {
           closeSocket();
+          events.onClose?.();
         }
       } catch {
         return;
       }
+    };
+    socket.onerror = () => {
+      closeSocket();
+      events.onClose?.();
+    };
+    socket.onclose = () => {
+      socket = null;
+      events.onClose?.();
     };
   }
 
