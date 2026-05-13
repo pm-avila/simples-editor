@@ -83,5 +83,13 @@ class WsHandshakeAuthenticationTest(unittest.TestCase):
             )
 
 
+class WsEndpointRegistrationTest(unittest.TestCase):
+    def test_ws_route_registered(self):
+        from backend.app import app
+
+        rules = {rule.rule for rule in app.url_map.iter_rules()}
+        self.assertIn("/ws/run", rules)
+
+
 if __name__ == "__main__":
     unittest.main()

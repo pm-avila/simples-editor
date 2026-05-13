@@ -1,10 +1,15 @@
 from flask import Flask, jsonify, request
+from flask_sock import Sock
 
+from backend.auth_config import load_supabase_auth_config
 from backend.compiler import compile_simples
 from backend.health import build_health_payload
+from backend.ws.handshake import HandshakeAuthError
+from backend.ws.run_session import handle_run_session
 
 
 app = Flask(__name__)
+sock = Sock(app)
 
 
 @app.route("/")
@@ -33,6 +38,15 @@ def api_compile():
     if result["ok"]:
         return jsonify({"nasm": result["nasm"]}), 200
     return jsonify({"error": result["error"]}), 422
+
+
+@sock.route("/ws/run")
+def ws_run(ws):
+    auth = load_supabase_auth_config()
+    try:
+        handle_run_session(ws, request, auth.jwt_secret)
+    except HandshakeAuthError:
+        ws.close(1008)
 
 
 def create_app():
