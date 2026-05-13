@@ -53,6 +53,12 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertRegex(styles, re.compile(r"\.terminal-pane__host\s*\{[\s\S]*height:\s*100%;"))
         self.assertRegex(styles, re.compile(r"\.terminal-pane\s+\.xterm\s*\{[\s\S]*height:\s*100%;"))
 
+    def test_terminal_pane_markup_uses_terminal_host_class_contract(self):
+        source = (ROOT / "frontend" / "src" / "components" / "ide" / "terminal-pane.tsx").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(source, re.compile(r'<div[\s\S]*className="terminal-pane__host"[\s\S]*ref=\{terminalHostRef\}'))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -61,7 +61,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
   return (
     <section className="terminal-pane" style={{ alignItems: "stretch", flexDirection: "column", gap: 8 }}>
       <span className="terminal-pane__label">Terminal</span>
-      <div ref={terminalHostRef} style={{ flex: 1, minHeight: 0, width: "100%" }} />
+      <div className="terminal-pane__host" ref={terminalHostRef} style={{ flex: 1, minHeight: 0, width: "100%" }} />
     </section>
   );
 });
