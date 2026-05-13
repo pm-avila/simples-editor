@@ -1,4 +1,4 @@
-import importlib
+import backend.ws as backend_ws
 import pathlib
 import unittest
 
@@ -12,8 +12,7 @@ class WebSocketScaffoldTest(unittest.TestCase):
         self.assertIn("flask-sock==", content)
 
     def test_backend_ws_module_can_be_imported(self):
-        module = importlib.import_module("backend.ws")
-        self.assertIsNotNone(module)
+        self.assertIsNotNone(backend_ws)
 
 
 if __name__ == "__main__":
