@@ -25,3 +25,4 @@
 | `pm-avila` | [#74](https://github.com/pm-avila/simples-editor/pull/74) | `feat/27` | `dev` | `MERGED` |
 | `pm-avila` | [#75](https://github.com/pm-avila/simples-editor/pull/75) | `feat/28` | `dev` | `MERGED` |
 | `pm-avila` | [#76](https://github.com/pm-avila/simples-editor/pull/76) | `feat/29` | `dev` | `MERGED` |
+| `pm-avila` | [#77](https://github.com/pm-avila/simples-editor/pull/77) | `feat/30` | `dev` | `MERGED` |
