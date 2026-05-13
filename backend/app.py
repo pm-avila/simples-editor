@@ -1,5 +1,8 @@
 from flask import Flask, jsonify, request
-from flask_sock import Sock
+try:
+    from flask_sock import Sock
+except ModuleNotFoundError:
+    Sock = None
 
 from backend.auth_config import load_supabase_auth_config
 from backend.compiler import compile_simples
@@ -9,7 +12,7 @@ from backend.ws.run_session import handle_run_session
 
 
 app = Flask(__name__)
-sock = Sock(app)
+sock = Sock(app) if Sock is not None else None
 
 
 @app.route("/")
@@ -40,13 +43,15 @@ def api_compile():
     return jsonify({"error": result["error"]}), 422
 
 
-@sock.route("/ws/run")
-def ws_run(ws):
-    auth = load_supabase_auth_config()
-    try:
-        handle_run_session(ws, request, auth.jwt_secret)
-    except HandshakeAuthError:
-        ws.close(1008)
+if sock is not None:
+
+    @sock.route("/ws/run")
+    def ws_run(ws):
+        auth = load_supabase_auth_config()
+        try:
+            handle_run_session(ws, request, auth.jwt_secret)
+        except HandshakeAuthError:
+            ws.close(1008)
 
 
 def create_app():
