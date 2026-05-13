@@ -1,6 +1,11 @@
 import importlib.util
+import json
 import pathlib
+import sys
 import unittest
+from types import ModuleType
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import jwt
 
@@ -89,6 +94,134 @@ class WsEndpointRegistrationTest(unittest.TestCase):
 
         rules = {rule.rule for rule in app.url_map.iter_rules()}
         self.assertIn("/ws/run", rules)
+
+
+class FakeWs:
+    def __init__(self, incoming=None):
+        self._incoming = list(incoming or [])
+        self.sent = []
+        self.closed_codes = []
+
+    def send(self, payload):
+        self.sent.append(payload)
+
+    def receive(self):
+        if self._incoming:
+            return self._incoming.pop(0)
+        return None
+
+    def close(self, code):
+        self.closed_codes.append(code)
+
+
+class FakeRequest:
+    def __init__(self, headers=None, args=None):
+        self.headers = headers or {}
+        self.args = args or {}
+
+
+class WsRunSessionAuthBehaviorTest(unittest.TestCase):
+    @staticmethod
+    def _load_app_module_with_callable_ws_run():
+        module_path = ROOT / "backend" / "app.py"
+        spec = importlib.util.spec_from_file_location("backend.app_test_double", module_path)
+        module = importlib.util.module_from_spec(spec)
+
+        fake_flask_sock = ModuleType("flask_sock")
+
+        class FakeSock:
+            def __init__(self, app):
+                self.app = app
+
+            def route(self, _path):
+                def decorator(fn):
+                    return fn
+
+                return decorator
+
+        fake_flask_sock.Sock = FakeSock
+        with patch.dict(sys.modules, {"flask_sock": fake_flask_sock}):
+            spec.loader.exec_module(module)
+        return module
+
+    def test_ws_run_closes_with_1008_on_handshake_auth_error(self):
+        app_module = self._load_app_module_with_callable_ws_run()
+        from backend.ws.handshake import HandshakeAuthError
+
+        ws = FakeWs()
+        with patch.object(
+            app_module,
+            "load_supabase_auth_config",
+            return_value=SimpleNamespace(jwt_secret="secret"),
+        ), patch.object(
+            app_module,
+            "handle_run_session",
+            side_effect=HandshakeAuthError("invalid token"),
+        ):
+            app_module.ws_run(ws)
+
+        self.assertEqual(ws.closed_codes, [1008])
+
+    def test_handle_run_session_sends_session_ready_idle_with_user_id(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            args={},
+        )
+        ws = FakeWs(incoming=[None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ) as auth_mock:
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        auth_mock.assert_called_once_with(request.headers, request.args, "secret")
+        self.assertEqual(len(ws.sent), 1)
+        payload = json.loads(ws.sent[0])
+        self.assertEqual(payload["type"], "session_ready")
+        self.assertEqual(payload["state"], "idle")
+        self.assertEqual(payload["user_id"], "user-123")
+
+    def test_handle_run_session_ignores_invalid_json_and_missing_type(self):
+        import backend.ws.run_session as run_session_module
+
+        request = FakeRequest(
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,token"},
+            args={},
+        )
+        ws = FakeWs(incoming=["{bad json", '{"payload":"ok"}', None])
+
+        with patch.object(
+            run_session_module, "authenticate_ws_handshake", return_value="user-123"
+        ):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+        self.assertEqual(len(ws.sent), 1)
+        self.assertEqual(json.loads(ws.sent[0])["type"], "session_ready")
+
+    def test_handle_run_session_rejects_missing_token(self):
+        import backend.ws.run_session as run_session_module
+        from backend.ws.handshake import HandshakeAuthError
+
+        request = FakeRequest(headers={}, args={})
+        ws = FakeWs(incoming=[None])
+
+        with self.assertRaisesRegex(HandshakeAuthError, "missing bearer token"):
+            run_session_module.handle_run_session(ws, request, "secret")
+
+    def test_handle_run_session_rejects_invalid_token(self):
+        import backend.ws.run_session as run_session_module
+        from backend.ws.handshake import HandshakeAuthError
+
+        request = FakeRequest(
+            headers={"Sec-WebSocket-Protocol": "simples.v1,bearer,not-a-jwt"},
+            args={},
+        )
+        ws = FakeWs(incoming=[None])
+
+        with self.assertRaisesRegex(HandshakeAuthError, "invalid token"):
+            run_session_module.handle_run_session(ws, request, "secret")
 
 
 if __name__ == "__main__":
