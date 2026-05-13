@@ -48,6 +48,11 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         self.assertRegex(source, re.compile(r"<TerminalPane[\s\S]*ref=\{terminalRef\}"))
         self.assertRegex(source, re.compile(r"onData=\{handleTerminalData\}"))
 
+    def test_terminal_styles_define_xterm_host_height_contract(self):
+        styles = (ROOT / "frontend" / "src" / "styles.css").read_text(encoding="utf-8")
+        self.assertRegex(styles, re.compile(r"\.terminal-pane__host\s*\{[\s\S]*height:\s*100%;"))
+        self.assertRegex(styles, re.compile(r"\.terminal-pane\s+\.xterm\s*\{[\s\S]*height:\s*100%;"))
+
 
 if __name__ == "__main__":
     unittest.main()
