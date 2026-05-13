@@ -90,7 +90,8 @@ class WsHandshakeAuthenticationTest(unittest.TestCase):
 
 class WsEndpointRegistrationTest(unittest.TestCase):
     def test_ws_route_registered(self):
-        from backend.app import app
+        app_module = WsRunSessionAuthBehaviorTest._load_app_module_with_callable_ws_run()
+        app = app_module.app
 
         rules = {rule.rule for rule in app.url_map.iter_rules()}
         self.assertIn("/ws/run", rules)
@@ -133,8 +134,9 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
             def __init__(self, app):
                 self.app = app
 
-            def route(self, _path):
+            def route(self, path):
                 def decorator(fn):
+                    self.app.add_url_rule(path, endpoint=f"ws_{fn.__name__}", view_func=lambda: "")
                     return fn
 
                 return decorator
