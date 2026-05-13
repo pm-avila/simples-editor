@@ -59,6 +59,21 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
         )
         self.assertRegex(source, re.compile(r'<div[\s\S]*className="terminal-pane__host"[\s\S]*ref=\{terminalHostRef\}'))
 
+    def test_run_session_client_exposes_compile_and_stdin_contract(self):
+        source = (ROOT / "frontend" / "src" / "lib" / "run-session-client.ts").read_text(encoding="utf-8")
+        self.assertIn("new WebSocket", source)
+        self.assertIn('"compile_and_run"', source)
+        self.assertIn('"stdin"', source)
+        self.assertIn("sendStdin", source)
+
+    def test_ide_shell_wires_terminal_input_and_stdout_for_leia_flow(self):
+        source = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
+        self.assertIn("createRunSessionClient", source)
+        self.assertRegex(source, re.compile(r"handleTerminalData[\s\S]*sendStdin"))
+        self.assertRegex(source, re.compile(r"onStdout[\s\S]*terminalRef\.current\?\.write"))
+        self.assertIn('terminalRef.current?.write("$ simplesc run\\n");', source)
+        self.assertRegex(source, re.compile(r"runSessionRef\.current\?\.start\("))
+
 
 if __name__ == "__main__":
     unittest.main()
