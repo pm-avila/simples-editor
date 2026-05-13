@@ -1,7 +1,9 @@
 from flask import Flask, jsonify, request
 try:
     from flask_sock import Sock
-except ModuleNotFoundError:
+except ModuleNotFoundError as exc:
+    if exc.name != "flask_sock":
+        raise
     Sock = None
 
 from backend.auth_config import load_supabase_auth_config

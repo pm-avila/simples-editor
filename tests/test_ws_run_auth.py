@@ -97,6 +97,39 @@ class WsEndpointRegistrationTest(unittest.TestCase):
         self.assertIn("/ws/run", rules)
 
 
+class FlaskSockImportGuardTest(unittest.TestCase):
+    @staticmethod
+    def _load_app_module_raising_on_flask_sock(module_error):
+        module_path = ROOT / "backend" / "app.py"
+        spec = importlib.util.spec_from_file_location("backend.app_import_guard_test", module_path)
+        module = importlib.util.module_from_spec(spec)
+        original_import = __import__
+
+        def import_with_flask_sock_failure(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "flask_sock":
+                raise module_error
+            return original_import(name, globals, locals, fromlist, level)
+
+        with patch("builtins.__import__", side_effect=import_with_flask_sock_failure):
+            spec.loader.exec_module(module)
+        return module
+
+    def test_missing_flask_sock_module_is_optional(self):
+        app_module = self._load_app_module_raising_on_flask_sock(
+            ModuleNotFoundError("No module named 'flask_sock'", name="flask_sock")
+        )
+
+        self.assertIsNone(app_module.Sock)
+
+    def test_transitive_module_not_found_error_is_not_swallowed(self):
+        with self.assertRaises(ModuleNotFoundError) as context:
+            self._load_app_module_raising_on_flask_sock(
+                ModuleNotFoundError("No module named 'wsproto'", name="wsproto")
+            )
+
+        self.assertEqual(context.exception.name, "wsproto")
+
+
 class FakeWs:
     def __init__(self, incoming=None):
         self._incoming = list(incoming or [])
