@@ -4,6 +4,7 @@ export interface CompileError {
   line: number;
   column: number;
   message: string;
+  retry_after?: number;
 }
 
 /** Success result from POST /api/compile */
@@ -32,6 +33,22 @@ export async function compileCode(code: string): Promise<CompileResult> {
   if (response.status === 422) {
     const data = (await response.json()) as { error: CompileError };
     return { ok: false, error: data.error };
+  }
+
+  if (response.status === 429) {
+    const data = (await response.json()) as {
+      error?: Partial<CompileError> & { retry_after?: number };
+    };
+    return {
+      ok: false,
+      error: {
+        phase: "compile",
+        line: 0,
+        column: 0,
+        message: data.error?.message ?? "rate limit exceeded",
+        retry_after: data.error?.retry_after,
+      },
+    };
   }
 
   return {

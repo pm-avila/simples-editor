@@ -126,6 +126,22 @@ class TestCompileEndpointFailure(unittest.TestCase):
         self.assertEqual(resp.status_code, 422)
         self.assertIn("output file", resp.get_json()["error"]["message"])
 
+    def test_post_compile_returns_429_when_rate_limited(self):
+        with patch("backend.app.allow_compile_request", return_value=(False, 17)), patch(
+            "backend.app.compile_simples"
+        ) as compile_mock:
+            resp = self.client.post(
+                "/api/compile",
+                data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
+                content_type="application/json",
+            )
+
+        compile_mock.assert_not_called()
+        self.assertEqual(resp.status_code, 429)
+        body = resp.get_json()
+        self.assertEqual(body["error"]["phase"], "compile")
+        self.assertEqual(body["error"]["retry_after"], 17)
+
 
 class TestCompileEndpointValidation(unittest.TestCase):
 
@@ -161,4 +177,3 @@ class TestCompileEndpointValidation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

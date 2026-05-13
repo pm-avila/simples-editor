@@ -25,6 +25,7 @@ class ToolbarMockRunTests(unittest.TestCase):
         """Toolbar must render the Stop button with toolbar__stop-btn class."""
         src = TOOLBAR.read_text()
         self.assertIn("toolbar__stop-btn", src)
+        self.assertIn('status === "executing"', src)
 
     def test_ide_shell_imports_toolbar(self):
         """IdeShell must import Toolbar."""
@@ -40,6 +41,7 @@ class ToolbarMockRunTests(unittest.TestCase):
         """IdeShell must reference the 'compiling' status value."""
         src = IDE_SHELL.read_text()
         self.assertIn('"compiling"', src)
+        self.assertIn('"executing"', src)
 
     def test_monaco_pane_accepts_readonly_prop(self):
         """MonacoEditorPane must accept a readOnly prop and pass it to Monaco."""

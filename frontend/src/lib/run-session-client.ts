@@ -18,6 +18,13 @@ export function createRunSessionClient(events: RunSessionClientEvents = {}): Run
   let socket: WebSocket | null = null;
   let pendingCode: string | null = null;
 
+  function closeSocket() {
+    if (!socket) return;
+    socket.close();
+    socket = null;
+    pendingCode = null;
+  }
+
   function ensureConnected() {
     if (socket && socket.readyState <= WebSocket.OPEN) return;
     socket = new WebSocket(buildRunSessionWsUrl());
@@ -33,6 +40,10 @@ export function createRunSessionClient(events: RunSessionClientEvents = {}): Run
         events.onEvent?.(payload);
         if (payload.type === "stdout" && typeof payload.data === "string") {
           events.onStdout?.(payload.data);
+          return;
+        }
+        if (payload.type === "exit" || payload.type === "timeout") {
+          closeSocket();
         }
       } catch {
         return;
@@ -57,10 +68,9 @@ export function createRunSessionClient(events: RunSessionClientEvents = {}): Run
       if (!socket) return;
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "stop" }));
+        return;
       }
-      socket.close();
-      socket = null;
-      pendingCode = null;
+      closeSocket();
     },
   };
 }

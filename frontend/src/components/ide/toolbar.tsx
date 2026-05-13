@@ -1,4 +1,4 @@
-export type IdeStatus = "idle" | "compiling" | "compile_error";
+export type IdeStatus = "idle" | "compiling" | "executing" | "compile_error";
 
 interface ToolbarProps {
   status: IdeStatus;
@@ -7,7 +7,7 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ status, onRun, onStop }: ToolbarProps) {
-  const isRunning = status === "compiling";
+  const isRunning = status === "compiling" || status === "executing";
   return (
     <header className="toolbar">
       {isRunning ? (

@@ -17,6 +17,7 @@ class _FakeContainer:
     def __init__(self):
         self.started = False
         self.stopped = False
+        self.stop_timeout = None
         self.socket = _FakeSocket()
         self.logs_output = b"stdout-line"
 
@@ -25,6 +26,7 @@ class _FakeContainer:
 
     def stop(self, timeout=1):
         self.stopped = True
+        self.stop_timeout = timeout
 
     def attach_socket(self, params=None):
         return self.socket
@@ -39,18 +41,8 @@ class _FakeDockerClient:
         self.container = _FakeContainer()
         self.containers = self
 
-    def create(self, image, command, stdin_open, tty, working_dir, user, detach):
-        self.created.append(
-            {
-                "image": image,
-                "command": command,
-                "stdin_open": stdin_open,
-                "tty": tty,
-                "working_dir": working_dir,
-                "user": user,
-                "detach": detach,
-            }
-        )
+    def create(self, **kwargs):
+        self.created.append(kwargs)
         return self.container
 
 
@@ -71,6 +63,27 @@ class PtyExecutionStrategyTest(unittest.TestCase):
         with self.assertRaises(ExecutionStrategyError):
             strategy.start(image="simples-runner:dev", command=["/bin/sh"])
 
+    def test_start_uses_prd_sandbox_isolation_defaults(self):
+        client = _FakeDockerClient()
+        strategy = PtyExecutionStrategy(client_factory=lambda: client)
+
+        strategy.start(image="simples-runner:dev", command=["/bin/sh"])
+
+        created = client.created[0]
+        self.assertEqual(created["stdin_open"], True)
+        self.assertEqual(created["tty"], True)
+        self.assertEqual(created["working_dir"], "/sandbox")
+        self.assertEqual(created["user"], "65534:65534")
+        self.assertEqual(created["detach"], True)
+        self.assertEqual(created["network_mode"], "none")
+        self.assertEqual(created["read_only"], True)
+        self.assertEqual(created["cap_drop"], ["ALL"])
+        self.assertEqual(created["mem_limit"], "128m")
+        self.assertEqual(created["memswap_limit"], "128m")
+        self.assertEqual(created["cpu_quota"], 50000)
+        self.assertEqual(created["pids_limit"], 64)
+        self.assertEqual(created["tmpfs"], {"/tmp": "size=8m"})
+
     def test_stop_before_start_is_rejected(self):
         strategy = PtyExecutionStrategy(client_factory=_FakeDockerClient)
         with self.assertRaises(ExecutionStrategyError):
@@ -83,6 +96,12 @@ class PtyExecutionStrategyTest(unittest.TestCase):
         self.assertEqual(strategy.state, ExecutionLifecycleState.STOPPED)
         strategy.stop()
         self.assertEqual(strategy.state, ExecutionLifecycleState.STOPPED)
+
+    def test_stop_uses_hard_timeout_of_12_seconds(self):
+        strategy = PtyExecutionStrategy(client_factory=_FakeDockerClient)
+        strategy.start(image="simples-runner:dev", command=["/bin/sh"])
+        strategy.stop()
+        self.assertEqual(strategy._container.stop_timeout, 12)
 
     def test_stdin_and_stdout_bridge_use_underlying_container_handles(self):
         strategy = PtyExecutionStrategy(client_factory=_FakeDockerClient)

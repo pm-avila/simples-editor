@@ -3,6 +3,9 @@ from backend.ws.execution import ExecutionLifecycleState
 from backend.ws.execution import ExecutionStrategyError
 
 
+HARD_STOP_TIMEOUT_SECONDS = 12
+
+
 class PtyExecutionStrategy:
     def __init__(self, client_factory=None):
         self._client_factory = client_factory or self._build_default_client
@@ -30,8 +33,16 @@ class PtyExecutionStrategy:
                 stdin_open=True,
                 tty=True,
                 working_dir="/sandbox",
-                user="sandbox",
+                user="65534:65534",
                 detach=True,
+                network_mode="none",
+                read_only=True,
+                cap_drop=["ALL"],
+                mem_limit="128m",
+                memswap_limit="128m",
+                cpu_quota=50000,
+                pids_limit=64,
+                tmpfs={"/tmp": "size=8m"},
             )
             container.start()
             stdin_socket = container.attach_socket(params={"stdin": 1, "stream": 1})
@@ -63,7 +74,7 @@ class PtyExecutionStrategy:
         if self.state != ExecutionLifecycleState.RUNNING or self._container is None:
             raise ExecutionStrategyError("execution is not running")
         try:
-            self._container.stop(timeout=1)
+            self._container.stop(timeout=HARD_STOP_TIMEOUT_SECONDS)
         except Exception as exc:
             raise ExecutionStrategyError("failed to stop execution") from exc
         self.state = ExecutionLifecycleState.STOPPED
