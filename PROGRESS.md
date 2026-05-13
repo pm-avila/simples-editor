@@ -36,7 +36,7 @@
 
 - [ ] #24 feat(ws): implement authenticated /ws/run endpoint
 - [ ] #25 feat(terminal): integrate xterm.js into the terminal panel
-- [ ] #26 feat(sandbox): build the simples-runner execution image
+- [x] #26 feat(sandbox): build the simples-runner execution image
 - [ ] #27 feat(executor): implement PtyExecutionStrategy for interactive runs
 - [ ] #28 feat(stream): bridge terminal I/O between WebSocket and PTY
 - [ ] #29 feat(interactive): support leia end-to-end in the IDE
