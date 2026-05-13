@@ -44,17 +44,15 @@
 
 ## Sprint 5
 
-_Status GitHub (2026-05-13): issues #31 a #39 estão abertas._
-
-- [ ] #31 feat(stop): wire the Stop action through the execution lifecycle
-- [ ] #32 feat(executor): enforce wall-clock execution timeout
-- [ ] #33 feat(sandbox): configure hard Docker stop timeout
-- [ ] #34 feat(security): harden sandbox runtime isolation defaults
-- [ ] #35 feat(security): rate-limit compile and run operations
-- [ ] #36 feat(observability): emit structured JSON logs
-- [ ] #37 feat(observability): expose Prometheus metrics internally
-- [ ] #38 feat(security): verify sandbox escape scenarios are blocked
-- [ ] #39 feat(docs): document sandbox incident response
+- [x] #31 feat(stop): wire the Stop action through the execution lifecycle
+- [x] #32 feat(executor): enforce wall-clock execution timeout
+- [x] #33 feat(sandbox): configure hard Docker stop timeout
+- [x] #34 feat(security): harden sandbox runtime isolation defaults
+- [x] #35 feat(security): rate-limit compile and run operations
+- [x] #36 feat(observability): emit structured JSON logs
+- [x] #37 feat(observability): expose Prometheus metrics internally
+- [x] #38 feat(security): verify sandbox escape scenarios are blocked
+- [x] #39 feat(docs): document sandbox incident response
 
 ## Sprint 6
 
@@ -66,3 +64,4 @@ _Status GitHub (2026-05-13): issues #31 a #39 estão abertas._
 - [ ] #45 feat(deploy): configure a custom academic domain
 - [ ] #46 feat(presentation): prepare the final project presentation
 - [ ] #47 feat(retro): capture the team retrospective
+
