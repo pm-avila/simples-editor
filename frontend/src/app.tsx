@@ -28,9 +28,15 @@ export function App() {
     if (error) setLoginError(error.message);
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setAuthenticated(false);
+    setAccessToken(undefined);
+  }
+
   if (!authenticated) {
     return <LoginScreen onSubmit={handleLogin} error={loginError} />;
   }
 
-  return <IdeShell token={accessToken} />;
+  return <IdeShell token={accessToken} onLogout={handleLogout} />;
 }

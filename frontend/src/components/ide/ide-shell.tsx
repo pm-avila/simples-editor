@@ -13,7 +13,7 @@ import { createRunSessionClient } from "../../lib/run-session-client";
 import type { RunSessionClient } from "../../lib/run-session-client";
 
 
-export function IdeShell({ token }: { token?: string }) {
+export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () => void }) {
   const [status, setStatus] = useState<IdeStatus>("idle");
   const [nasmContent, setNasmContent] = useState("");
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
@@ -103,6 +103,7 @@ export function IdeShell({ token }: { token?: string }) {
           onStop={() => {
             runSessionRef.current?.stop();
           }}
+          onLogout={onLogout}
         />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
