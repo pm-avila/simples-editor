@@ -17,15 +17,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/pm-avila/simples-compiler /tmp/compiler && \
     cd /tmp/compiler && \
     make && \
-    cp simplesc /usr/local/bin/simplesc && \
+    cp build/simplesc /usr/local/bin/simplesc && \
     rm -rf /tmp/compiler
 
 # Backend Python
 WORKDIR /app
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --break-system-packages -r requirements.txt
 
-COPY . ./backend
+COPY backend ./backend
+COPY tests ./tests
 
 EXPOSE 5000
 
