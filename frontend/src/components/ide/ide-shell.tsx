@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useMemo } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { MonacoEditorPane } from "./monaco-editor-pane";
@@ -7,12 +7,122 @@ import { NasmPane } from "./nasm-pane";
 import { TerminalPane } from "./terminal-pane";
 import type { TerminalPaneHandle } from "./terminal-pane";
 import { Toolbar } from "./toolbar";
-import type { IdeStatus } from "./toolbar";
-import { ExamplesMenu } from "./examples-menu";
+import type { IdeStatus, Example } from "./toolbar";
 import { compileCode } from "../../lib/compile-api";
 import { createRunSessionClient } from "../../lib/run-session-client";
 import type { RunSessionClient } from "../../lib/run-session-client";
 
+const SIMPLES_EXAMPLES: Example[] = [
+  {
+    name: "Olá Mundo",
+    code: `programa demo
+inteiro x;
+inicio
+x <- (2 + 3) * (4 - 1);
+escreva x;
+escreval x;
+fim`,
+  },
+  {
+    name: "Entrada/Saída",
+    code: `programa demo
+inteiro x;
+inicio
+  leia x;
+  escreval x;
+fim`,
+  },
+  {
+    name: "Fibonacci",
+    code: `procedimento inteiro fibonacci(inteiro n)
+inicio
+  inteiro i, a, b, tmp;
+  a <- 0;
+  b <- 1;
+  se n = 0 entao
+    retorna 0;
+  senao
+    se n = 1 entao
+      retorna 1;
+    senao
+      para i de 2 ate n passo 1 faca
+        tmp <- a + b;
+        a <- b;
+        b <- tmp;
+      fimpara
+      retorna b;
+    fimse
+  fimse
+fim
+
+programa demo
+inteiro n, i;
+inicio
+  escreva "digite o numero: ";
+  leia n;
+  se n > 46 entao
+    escreval "numero muito grande";
+  senao
+    escreva "fibonacci ate ";
+    escreva n;
+    escreval ":";
+    para i de 0 ate n passo 1 faca
+      escreva fibonacci(i);
+      se i < n entao
+        escreva " ";
+      fimse
+    fimpara
+    escreval "";
+  fimse
+fim`,
+  },
+  {
+    name: "Fatorial",
+    code: `procedimento inteiro fatorial(inteiro n)
+inicio
+  inteiro i, resultado;
+  resultado <- 1;
+  para i de 2 ate n passo 1 faca
+    resultado <- resultado * i;
+  fimpara
+  retorna resultado;
+fim
+
+programa demo
+inteiro x;
+inicio
+  escreva "digite o numero: ";
+  leia x;
+  escreva "fatorial de ";
+  escreva x;
+  escreva " = ";
+  escreval fatorial(x);
+fim`,
+  },
+  {
+    name: "Matriz 2D",
+    code: `programa demo
+inteiro m[3][4];
+inteiro i, j;
+inicio
+  para i de 0 ate 2 passo 1 faca
+    para j de 0 ate 3 passo 1 faca
+      m[i][j] <- i * 10 + j;
+    fimpara
+  fimpara
+
+  para i de 0 ate 2 passo 1 faca
+    para j de 0 ate 3 passo 1 faca
+      escreva m[i][j];
+      se j < 3 entao
+        escreva " ";
+      fimse
+    fimpara
+    escreval "";
+  fimpara
+fim`,
+  },
+];
 
 export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () => void }) {
   const [status, setStatus] = useState<IdeStatus>("idle");
@@ -21,6 +131,9 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
   const editorRef = useRef<MonacoEditorPaneHandle>(null);
   const terminalRef = useRef<TerminalPaneHandle>(null);
   const runSessionRef = useRef<RunSessionClient | null>(null);
+  
+  const examples = useMemo(() => SIMPLES_EXAMPLES, []);
+
   const handleRunSessionEvent = useCallback((payload: Record<string, unknown>) => {
     if (payload.type === "exec_started") {
       setStatus("executing");
@@ -46,6 +159,7 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
   const handleRunSessionClose = useCallback(() => {
     setStatus((prev) => (prev === "executing" ? "idle" : prev));
   }, []);
+  
   const handleTerminalData = useCallback((data: string) => {
     runSessionRef.current?.sendStdin(data);
   }, []);
@@ -96,24 +210,25 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
     }
   }
 
-  const handleLoadExample = (code: string) => {
+  const handleLoadExample = (example: Example) => {
     const editor = editorRef.current;
     if (editor) {
-      editor.setValue(code);
+      editor.setValue(example.code);
     }
   }
 
   return (
     <div id="ide-shell" className="ide-container">
       <Toolbar
-          status={status}
-          onRun={handleRun}
-          onStop={() => {
-            runSessionRef.current?.stop();
-          }}
-          onLogout={onLogout}
-        />
-      <ExamplesMenu onSelectExample={handleLoadExample} />
+        status={status}
+        onRun={handleRun}
+        onStop={() => {
+          runSessionRef.current?.stop();
+        }}
+        onLogout={onLogout}
+        onExampleSelect={handleLoadExample}
+        examples={examples}
+      />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
           <div className="editor-area ide-editor">
