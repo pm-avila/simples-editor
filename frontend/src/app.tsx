@@ -9,6 +9,7 @@ export function App() {
   const [showHome, setShowHome] = useState(true);
   const [loginError, setLoginError] = useState<string | undefined>();
   const [accessToken, setAccessToken] = useState<string | undefined>();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,8 +27,22 @@ export function App() {
 
   async function handleLogin(email: string, password: string) {
     setLoginError(undefined);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setLoginError(error.message);
+    setIsLoggingIn(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Login error:', error);
+        setLoginError(error.message);
+        setIsLoggingIn(false);
+      } else {
+        console.log('Login successful, waiting for auth state update...');
+        // onAuthStateChange listener will handle setting authenticated
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setLoginError('Erro ao conectar com o servidor');
+      setIsLoggingIn(false);
+    }
   }
 
   async function handleLogout() {
@@ -51,6 +66,7 @@ export function App() {
         onSubmit={handleLogin}
         error={loginError}
         onBackHome={() => setShowHome(true)}
+        isLoading={isLoggingIn}
       />
     );
   }

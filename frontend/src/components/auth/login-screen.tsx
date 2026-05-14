@@ -6,13 +6,15 @@ interface LoginScreenProps {
   onSubmit: (email: string, password: string) => void;
   error?: string;
   onBackHome?: () => void;
+  isLoading?: boolean;
 }
 
-export function LoginScreen({ onSubmit, error, onBackHome }: LoginScreenProps) {
+export function LoginScreen({ onSubmit, error, onBackHome, isLoading: externalLoading }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const finalIsLoading = externalLoading || isLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,10 +96,10 @@ export function LoginScreen({ onSubmit, error, onBackHome }: LoginScreenProps) {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={finalIsLoading}
               className="landing-button retro-nerd"
             >
-              {isLoading ? (
+              {finalIsLoading ? (
                 <>
                   <span className="landing-loading"></span>
                   <span className="landing-loading"></span>
