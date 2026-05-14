@@ -1,22 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './home-page.css';
 
 interface HomePageProps {
-  onLoginClick?: () => void;
-  onSignupClick?: () => void;
+  onSubmit: (email: string, password: string) => void;
+  error?: string;
+  isLoading?: boolean;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onSubmit, error, isLoading }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const email = (e.target as HTMLFormElement).email?.value;
-    console.log('Iniciando login com:', email);
-    onLoginClick?.();
+    if (email && password) {
+      onSubmit(email, password);
+    }
   };
 
   const handleGitHubLogin = () => {
     console.log('Login com GitHub');
-    onLoginClick?.();
+    // TODO: Implement GitHub OAuth
   };
 
   return (
@@ -85,7 +89,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
             <div className="code-row">
               <div className="code-block">
                 <div>
-                  <span className="kw">programa</span> <span className="id">OlaMundo</span>;
+                  <span className="kw">programa</span> <span className="id">OlaMundo</span>
                 </div>
                 <div>
                   <span className="kw">inicio</span>
@@ -96,7 +100,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
                   <span className="comment">// Primeira linha</span>
                 </div>
                 <div>
-                  <span className="kw">fim.</span>
+                  <span className="kw">fim</span>
                 </div>
                 <br />
                 <div className="run">{`>>> compilando...`}</div>
@@ -139,35 +143,47 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
             <label htmlFor="email">E-mail</label>
             <input
               id="email"
-              name="email"
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
               required
             />
 
             <label htmlFor="password">Senha</label>
             <input
               id="password"
-              name="password"
               type="password"
               placeholder="••••••••••"
               autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
               required
             />
+
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '12px', fontSize: '0.9rem' }}>
+              {error}
+            </div>}
 
             <a className="forgot" href="#recuperar">
               [ Esqueceu sua senha? ]
             </a>
 
-            <button className="btn btn-primary" type="submit">
-              [ Entrar ]
+            <button 
+              className="btn btn-primary" 
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? '[ Autenticando... ]' : '[ Entrar ]'}
             </button>
           </form>
 
           <div className="signup">
             Ainda não tem conta?{' '}
-            <a href="#cadastro" onClick={onSignupClick}>
+            <a href="#cadastro">
               [ Cadastre-se agora ]
             </a>
           </div>
@@ -177,6 +193,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
             className="btn btn-github"
             type="button"
             onClick={handleGitHubLogin}
+            disabled={isLoading}
           >
             <span aria-hidden="true">{`{~}`}</span>
             Entrar com GitHub

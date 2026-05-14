@@ -368,6 +368,31 @@ input:focus {
   transform: translateY(0);
 }
 
+.btn-primary:disabled,
+.btn-primary:disabled:hover {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: brightness(1);
+  transform: none;
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.3);
+}
+
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-github:disabled,
+.btn-github:disabled:hover {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .signup {
   margin: 22px 0;
   text-align: center;

@@ -99,7 +99,7 @@ body {
 }
 
 .ide-editor {
-  animation: flicker 0.15s infinite 50ms;
+  /* Flicker effect removed for better usability */
 }
 
 .ide-panel-group {
