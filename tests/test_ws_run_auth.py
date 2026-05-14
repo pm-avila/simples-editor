@@ -465,8 +465,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
         ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
-        ), patch.object(
             run_session_module, "_build_binary", return_value=b"ELF"
         ), patch.object(
             run_session_module.subprocess, "Popen", return_value=fake_proc
@@ -503,8 +501,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
         ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
-        ), patch.object(
             run_session_module, "_build_binary", return_value=b"ELF"
         ), patch.object(
             run_session_module.subprocess, "Popen", return_value=fake_proc
@@ -528,8 +524,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
         ), patch.object(
             run_session_module, "_build_binary", return_value=b"ELF"
         ), patch.object(
@@ -561,8 +555,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with redirect_stdout(buffer), patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
         ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
-        ), patch.object(
             run_session_module, "_build_binary", return_value=b"ELF"
         ), patch.object(
             run_session_module.subprocess, "Popen", return_value=fake_proc
@@ -590,8 +582,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
         ), patch.object(
             run_session_module, "_build_binary", side_effect=ExecutionStrategyError("boom")
         ):
@@ -641,8 +631,6 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
 
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
-        ), patch.object(
-            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
         ), patch.object(
             run_session_module, "_build_binary", return_value=b"ELF"
         ), patch.object(
