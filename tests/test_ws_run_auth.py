@@ -583,6 +583,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             run_session_module, "authenticate_ws_handshake", return_value="user-123"
         ), patch.object(
+            run_session_module, "compile_simples", return_value={"ok": True, "nasm": "; stub\n"}
+        ), patch.object(
             run_session_module, "_build_binary", side_effect=ExecutionStrategyError("boom")
         ):
             run_session_module.handle_run_session(ws, request, "secret")
