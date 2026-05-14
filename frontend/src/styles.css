@@ -4,6 +4,71 @@
   padding: 0;
 }
 
+/* Visual Redesign Theme Variables (Issue #79) */
+:root {
+  /* Dracula Theme (Landing Page) */
+  --dracula-bg: #282a36;
+  --dracula-fg: #f8f8f2;
+  --dracula-purple: #bd93f9;
+  --dracula-pink: #ff79c6;
+  --dracula-blue: #8be9fd;
+  --dracula-green: #50fa7b;
+
+  /* Retro Amber Phosphor Theme (IDE) */
+  --retro-bg: #0a0800;
+  --retro-fg: #ffb000;
+  --retro-glow: #ff9000;
+  --retro-dim: #cc6600;
+  --retro-scanline: rgba(0, 0, 0, 0.15);
+
+  /* Typography */
+  --font-jetbrains-mono: 'JetBrains Mono', monospace;
+  --font-fira-code: 'Fira Code', monospace;
+  --font-vt323: 'VT323', monospace;
+  --font-share-tech: 'Share Tech Mono', monospace;
+}
+
+@keyframes typing-cursor {
+  0%, 49% { border-right-color: var(--dracula-purple); }
+  50%, 100% { border-right-color: transparent; }
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes flicker {
+  0%, 18%, 22%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.5; }
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--retro-scanline),
+    var(--retro-scanline) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.phosphor-glow {
+  color: var(--retro-fg);
+  text-shadow:
+    0 0 10px var(--retro-glow),
+    0 0 20px var(--retro-glow),
+    0 0 30px var(--retro-dim);
+}
+
+.phosphor-flicker {
+  animation: flicker 0.15s infinite;
+}
+
 body {
   font-family: sans-serif;
   background: #1e1e1e;
