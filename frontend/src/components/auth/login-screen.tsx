@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./landing-redesign.css";
+import "./login-retro-nerd.css";
 
 interface LoginScreenProps {
   onSubmit: (email: string, password: string) => void;
@@ -23,8 +24,8 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
   };
 
   return (
-    <div className="landing-container">
-      <header className="landing-header">
+    <div className="landing-container retro-nerd">
+      <header className="landing-header retro-nerd">
         <div className="landing-logo-text">
           <span className="landing-logo-icon"></span>
           SIMPLES
@@ -33,34 +34,41 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
 
       <main className="landing-main">
         <div className="landing-hero">
-          <h1 className="landing-title">Simples Editor</h1>
-          <p className="landing-subtitle">Compilador web para a linguagem SIMPLES</p>
+          <h1 className="landing-title retro-nerd">
+███████╗██╗███╗   ███╗██████╗ ██╗     ███████╗███████╗
+██╔════╝██║████╗ ████║██╔══██╗██║     ██╔════╝██╔════╝
+███████╗██║██╔████╔██║██████╔╝██║     █████╗  ███████╗
+╚════██║██║██║╚██╔╝██║██╔═══╝ ██║     ██╔══╝  ╚════██║
+███████║██║██║ ╚═╝ ██║██║     ███████╗███████╗███████║
+╚══════╝╚═╝╚═╝     ╚═╝╚═╝     ╚══════╝╚══════╝╚══════╝
+          </h1>
+          <p className="landing-subtitle retro-nerd">[COMPILER ENVIRONMENT v1.0]</p>
         </div>
 
-        <div className="landing-card">
+        <div className="landing-card retro-nerd">
           <form className="landing-form" onSubmit={handleSubmit}>
             {error && (
-              <div role="alert" className="landing-error-message">
+              <div role="alert" className="landing-error-message retro-nerd">
                 {error}
               </div>
             )}
 
             <div className="landing-form-group">
-              <label htmlFor="email" className="landing-label">Email</label>
+              <label htmlFor="email" className="landing-label retro-nerd">Email</label>
               <input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                placeholder="usuario@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="landing-input"
+                className="landing-input retro-nerd"
               />
             </div>
 
             <div className="landing-form-group">
-              <label htmlFor="password" className="landing-label">Senha</label>
+              <label htmlFor="password" className="landing-label retro-nerd">Senha</label>
               <div className="landing-password-wrapper">
                 <input
                   id="password"
@@ -70,11 +78,11 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="landing-input"
+                  className="landing-input retro-nerd"
                 />
                 <button
                   type="button"
-                  className="landing-password-toggle"
+                  className="landing-password-toggle retro-nerd"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
@@ -86,7 +94,7 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="landing-button"
+              className="landing-button retro-nerd"
             >
               {isLoading ? (
                 <>
@@ -95,27 +103,27 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
                   <span className="landing-loading"></span>
                 </>
               ) : (
-                "Entrar na IDE"
+                "Entrar"
               )}
             </button>
 
-            <div className="landing-form-footer">
+            <div className="landing-form-footer retro-nerd">
               Primeira vez? <a href="#signup">Crie uma conta</a>
             </div>
           </form>
 
-          <div className="landing-features">
-            <div className="landing-feature">
-              <div className="landing-feature-icon">⚡</div>
-              <div className="landing-feature-label">Compile</div>
+          <div className="landing-features retro-nerd">
+            <div className="landing-feature retro-nerd">
+              <div className="landing-feature-icon retro-nerd">⚡</div>
+              <div className="landing-feature-label retro-nerd">Compile</div>
             </div>
-            <div className="landing-feature">
-              <div className="landing-feature-icon">🔍</div>
-              <div className="landing-feature-label">Visualize</div>
+            <div className="landing-feature retro-nerd">
+              <div className="landing-feature-icon retro-nerd">🔍</div>
+              <div className="landing-feature-label retro-nerd">Visualize</div>
             </div>
-            <div className="landing-feature">
-              <div className="landing-feature-icon">▶️</div>
-              <div className="landing-feature-label">Execute</div>
+            <div className="landing-feature retro-nerd">
+              <div className="landing-feature-icon retro-nerd">▶️</div>
+              <div className="landing-feature-label retro-nerd">Execute</div>
             </div>
           </div>
         </div>
