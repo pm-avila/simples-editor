@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { LoginScreen } from "./components/auth/login-screen";
+import { HomePage } from "./components/home/HomePage";
 import { IdeShell } from "./components/ide/ide-shell";
 
 export function App() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [showHome, setShowHome] = useState(true);
   const [loginError, setLoginError] = useState<string | undefined>();
   const [accessToken, setAccessToken] = useState<string | undefined>();
 
@@ -32,9 +34,18 @@ export function App() {
     await supabase.auth.signOut();
     setAuthenticated(false);
     setAccessToken(undefined);
+    setShowHome(true);
   }
 
   if (!authenticated) {
+    if (showHome) {
+      return (
+        <HomePage
+          onLoginClick={() => setShowHome(false)}
+          onSignupClick={() => setShowHome(false)}
+        />
+      );
+    }
     return <LoginScreen onSubmit={handleLogin} error={loginError} />;
   }
 

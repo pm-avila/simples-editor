@@ -9,10 +9,13 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick }) => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    const email = (e.target as HTMLFormElement).email?.value;
+    console.log('Iniciando login com:', email);
     onLoginClick?.();
   };
 
   const handleGitHubLogin = () => {
+    console.log('Login com GitHub');
     onLoginClick?.();
   };
 
@@ -136,6 +139,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
             <label htmlFor="email">E-mail</label>
             <input
               id="email"
+              name="email"
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
@@ -145,6 +149,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onSignupClick 
             <label htmlFor="password">Senha</label>
             <input
               id="password"
+              name="password"
               type="password"
               placeholder="••••••••••"
               autoComplete="current-password"
