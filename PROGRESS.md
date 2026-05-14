@@ -64,4 +64,5 @@
 - [ ] #45 feat(deploy): configure a custom academic domain
 - [ ] #46 feat(presentation): prepare the final project presentation
 - [ ] #47 feat(retro): capture the team retrospective
+- [x] #79 feat(ui): redesign completo do frontend — landing NERD e editor retro 80s/90s
 
