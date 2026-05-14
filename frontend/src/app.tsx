@@ -46,7 +46,13 @@ export function App() {
         />
       );
     }
-    return <LoginScreen onSubmit={handleLogin} error={loginError} />;
+    return (
+      <LoginScreen
+        onSubmit={handleLogin}
+        error={loginError}
+        onBackHome={() => setShowHome(true)}
+      />
+    );
   }
 
   return <IdeShell token={accessToken} onLogout={handleLogout} />;

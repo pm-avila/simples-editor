@@ -5,9 +5,10 @@ import "./login-retro-nerd.css";
 interface LoginScreenProps {
   onSubmit: (email: string, password: string) => void;
   error?: string;
+  onBackHome?: () => void;
 }
 
-export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
+export function LoginScreen({ onSubmit, error, onBackHome }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -109,6 +110,14 @@ export function LoginScreen({ onSubmit, error }: LoginScreenProps) {
 
             <div className="landing-form-footer retro-nerd">
               Primeira vez? <a href="#signup">Crie uma conta</a>
+              {onBackHome && (
+                <>
+                  {' '} · {' '}
+                  <a href="#" onClick={(e) => { e.preventDefault(); onBackHome(); }}>
+                    Voltar
+                  </a>
+                </>
+              )}
             </div>
           </form>
 
