@@ -65,4 +65,5 @@
 - [ ] #46 feat(presentation): prepare the final project presentation
 - [ ] #47 feat(retro): capture the team retrospective
 - [x] #79 feat(ui): redesign completo do frontend — landing NERD e editor retro 80s/90s
+- [ ] #80 Substituir stub do SIMPLES pelo compilador real (pm-avila/simples-compiler)
 
