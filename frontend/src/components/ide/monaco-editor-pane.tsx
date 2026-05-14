@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { registerSimplesLanguage, SIMPLES_LANGUAGE_ID } from "./simples-language";
-import { defineSimplesDarkTheme, SIMPLES_THEME_ID } from "./simples-theme";
+import { defineSimplesDarkTheme } from "./simples-theme";
 import { retroTheme } from "./retro-theme";
 import type { CompileError } from "../../lib/compile-api";
 

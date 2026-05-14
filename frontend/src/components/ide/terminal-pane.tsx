@@ -31,7 +31,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, TerminalPaneProps>(fu
 
     const terminal = new Terminal({
       cursorBlink: true,
-      fontFamily: 'var(--font-share-tech), "Share Tech Mono", "Cascadia Code", "Fira Code", Menlo, Consolas, monospace',
+      fontFamily: '"Share Tech Mono", "Cascadia Code", "Fira Code", Menlo, Consolas, monospace',
       fontSize: 13,
       lineHeight: 1.2,
       cursorStyle: 'block',
