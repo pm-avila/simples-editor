@@ -1,0 +1,112 @@
+/* Landing Page Dracula Theme Redesign (Issue #79) */
+
+.landing-container {
+  background: var(--dracula-bg);
+  color: var(--dracula-fg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-jetbrains-mono);
+  padding: 2rem;
+}
+
+.landing-logo {
+  font-family: var(--font-jetbrains-mono);
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--dracula-purple);
+  margin-bottom: 2rem;
+  white-space: pre;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 0 0 20px rgba(189, 147, 249, 0.3);
+}
+
+.landing-title {
+  font-size: 2.5rem;
+  color: var(--dracula-purple);
+  margin-bottom: 2rem;
+  font-family: var(--font-jetbrains-mono);
+  font-weight: bold;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid var(--dracula-purple);
+  animation: typing 2s steps(20, end), typing-cursor 0.5s infinite;
+  text-shadow: 0 0 20px rgba(189, 147, 249, 0.4);
+}
+
+.landing-form {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--dracula-purple);
+  border-radius: 4px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 0 30px rgba(189, 147, 249, 0.2), inset 0 0 20px rgba(189, 147, 249, 0.05);
+}
+
+.landing-form input {
+  background: var(--dracula-bg);
+  color: var(--dracula-fg);
+  border: 1px solid var(--dracula-purple);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  font-family: var(--font-fira-code);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.landing-form input::placeholder {
+  color: rgba(248, 248, 242, 0.5);
+}
+
+.landing-form input:focus {
+  outline: none;
+  border-color: var(--dracula-pink);
+  box-shadow: 0 0 20px rgba(255, 121, 198, 0.3), inset 0 0 10px rgba(189, 147, 249, 0.1);
+}
+
+.landing-button {
+  background: var(--dracula-purple);
+  color: var(--dracula-bg);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  width: 100%;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.landing-button:hover {
+  background: var(--dracula-pink);
+  box-shadow: 0 0 25px rgba(255, 121, 198, 0.6);
+  transform: translateY(-2px);
+}
+
+.landing-button:active {
+  transform: translateY(0);
+  box-shadow: 0 0 15px rgba(255, 121, 198, 0.4);
+}
+
+.landing-error {
+  color: #ff5555;
+  font-size: 0.85rem;
+  margin-top: -0.75rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.landing-footer {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: var(--dracula-blue);
+  font-family: var(--font-fira-code);
+  text-align: center;
+}
