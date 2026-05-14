@@ -73,6 +73,16 @@ def compile_simples(code: str) -> dict:
                     "message": "timeout: compilação excedeu o limite de tempo",
                 },
             }
+        except FileNotFoundError:
+            return {
+                "ok": False,
+                "error": {
+                    "phase": "compile",
+                    "line": 0,
+                    "column": 0,
+                    "message": f"compiler not found at {SIMPLESC_BIN}",
+                },
+            }
 
         if result.returncode != 0:
             return {"ok": False, "error": _parse_compiler_error(result.stderr)}
