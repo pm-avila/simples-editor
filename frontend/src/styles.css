@@ -192,6 +192,69 @@ body {
   flex-shrink: 0;
 }
 
+/* DOS-style toolbar redesign (Issue #79) */
+.toolbar-dos {
+  display: flex;
+  align-items: center;
+  background: #c0c0c0;
+  border-top: 2px solid #dfdfdf;
+  border-bottom: 2px solid #808080;
+  padding: 2px 4px;
+  gap: 4px;
+  font-family: var(--font-vt323);
+  font-size: 12px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.toolbar-button {
+  background: #c0c0c0;
+  border-top: 1px solid #dfdfdf;
+  border-right: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  border-left: 1px solid #dfdfdf;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: var(--font-vt323);
+  font-size: 12px;
+  color: #000;
+  user-select: none;
+  min-width: 50px;
+  text-align: center;
+}
+
+.toolbar-button:active {
+  border-top-color: #808080;
+  border-left-color: #808080;
+  border-right-color: #dfdfdf;
+  border-bottom-color: #dfdfdf;
+}
+
+.toolbar-button:disabled {
+  color: #808080;
+  cursor: not-allowed;
+}
+
+.toolbar-status {
+  padding: 0 8px;
+  color: #000;
+  font-size: 11px;
+}
+
+.toolbar-status-error {
+  padding: 0 8px;
+  color: #c72e0f;
+  font-size: 11px;
+  font-weight: bold;
+}
+
 .toolbar__run-btn,
 .toolbar__stop-btn {
   padding: 4px 12px;

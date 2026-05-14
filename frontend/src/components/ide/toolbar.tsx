@@ -9,16 +9,15 @@ interface ToolbarProps {
 export function Toolbar({ status, onRun, onStop }: ToolbarProps) {
   const isRunning = status === "compiling" || status === "executing";
   return (
-    <header className="toolbar">
-      {isRunning ? (
-        <button className="toolbar__stop-btn" onClick={onStop}>
-          Stop
+    <header className="toolbar-dos">
+      <div className="toolbar-section">
+        <button className="toolbar-button" onClick={isRunning ? onStop : onRun} disabled={false}>
+          {isRunning ? "Stop" : "Run"}
         </button>
-      ) : (
-        <button className="toolbar__run-btn" onClick={onRun}>
-          Run
-        </button>
-      )}
+        {status === "compiling" && <span className="toolbar-status">Compiling...</span>}
+        {status === "executing" && <span className="toolbar-status">Running...</span>}
+        {status === "compile_error" && <span className="toolbar-status-error">Compile Error</span>}
+      </div>
     </header>
   );
 }
