@@ -9,9 +9,6 @@ import tempfile
 
 SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
 
-if not os.path.exists(SIMPLESC_BIN):
-    logging.warning(f"simplesc compiler not found at {SIMPLESC_BIN}")
-
 
 def _parse_timeout(value: str, default: int = 15) -> int:
     """Parse COMPILE_TIMEOUT env var, returning default on invalid input."""
@@ -49,6 +46,9 @@ def compile_simples(code: str) -> dict:
         {"ok": True,  "nasm": "<str>"}
         {"ok": False, "error": {"phase": "lexer|parser|semantic|compile", "line": N, "column": N, "message": "..."}}
     """
+    if not os.path.exists(SIMPLESC_BIN):
+        logging.warning(f"simplesc compiler not found at {SIMPLESC_BIN}")
+    
     with tempfile.TemporaryDirectory(prefix="sim-") as tmpdir:
         src_path = os.path.join(tmpdir, "programa.simples")
         asm_path = os.path.join(tmpdir, "programa.asm")
