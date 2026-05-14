@@ -13,19 +13,6 @@ from unittest.mock import MagicMock, patch
 SAMPLE_NASM = "section .text\n    global _start\n_start:\n    int 0x80\n"
 
 
-def _mock_success(nasm_content):
-    """Return a side_effect that makes simplesc write nasm_content and exit 0."""
-    def fake_run(cmd, capture_output, text, timeout):
-        output_path = cmd[cmd.index("-o") + 1]
-        with open(output_path, "w") as f:
-            f.write(nasm_content)
-        proc = MagicMock()
-        proc.returncode = 0
-        proc.stderr = ""
-        return proc
-    return fake_run
-
-
 def _mock_failure(stderr, returncode=1):
     """Return a side_effect that makes simplesc fail with stderr."""
     def fake_run(cmd, capture_output, text, timeout):
@@ -44,24 +31,22 @@ class TestCompileEndpointSuccess(unittest.TestCase):
         self.client = app.test_client()
 
     def test_post_compile_returns_nasm_on_success(self):
-        with patch("backend.compiler.subprocess.run", side_effect=_mock_success(SAMPLE_NASM)):
-            resp = self.client.post(
-                "/api/compile",
-                data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
-                content_type="application/json",
-            )
+        resp = self.client.post(
+            "/api/compile",
+            data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
+            content_type="application/json",
+        )
         self.assertEqual(resp.status_code, 200)
         body = resp.get_json()
         self.assertIn("nasm", body)
         self.assertEqual(body["nasm"], SAMPLE_NASM)
 
     def test_post_compile_success_has_no_error_key(self):
-        with patch("backend.compiler.subprocess.run", side_effect=_mock_success(SAMPLE_NASM)):
-            resp = self.client.post(
-                "/api/compile",
-                data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
-                content_type="application/json",
-            )
+        resp = self.client.post(
+            "/api/compile",
+            data=json.dumps({"code": "programa teste\ninicio\nfim\n"}),
+            content_type="application/json",
+        )
         self.assertNotIn("error", resp.get_json())
 
 
