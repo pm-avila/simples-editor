@@ -1,0 +1,38 @@
+name: Sync Sprint 1 Progress
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled, milestoned, demilestoned]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  update-progress:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
+
+      - name: Generate PROGRESS.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/update_progress.py
+
+      - name: Commit PROGRESS.md if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet PROGRESS.md 2>/dev/null && git ls-files --error-unmatch PROGRESS.md 2>/dev/null; then
+            echo "PROGRESS.md unchanged — nothing to commit."
+          else
+            git add PROGRESS.md
+            git commit -m "docs: sync Sprint 1 progress [skip ci]"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi

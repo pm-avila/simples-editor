@@ -1,0 +1,28 @@
+# Pull request evidence
+
+## Merged PR coverage
+
+| Member | Pull Request | Branch | Base | Status |
+| --- | --- | --- | --- | --- |
+| `pm-avila` | [#48](https://github.com/pm-avila/simples-editor/pull/48) | `feat/1` | `dev` | `MERGED` |
+| `pm-avila` | [#57](https://github.com/pm-avila/simples-editor/pull/57) | `feat/10` | `dev` | `MERGED` |
+| `pm-avila` | [#58](https://github.com/pm-avila/simples-editor/pull/58) | `feat/11` | `dev` | `MERGED` |
+| `pm-avila` | [#59](https://github.com/pm-avila/simples-editor/pull/59) | `feat/12` | `dev` | `MERGED` |
+| `pm-avila` | [#60](https://github.com/pm-avila/simples-editor/pull/60) | `feat/13` | `dev` | `MERGED` |
+| `pm-avila` | [#61](https://github.com/pm-avila/simples-editor/pull/61) | `feat/14` | `dev` | `MERGED` |
+| `pm-avila` | [#62](https://github.com/pm-avila/simples-editor/pull/62) | `feat/15` | `dev` | `MERGED` |
+| `pm-avila` | [#63](https://github.com/pm-avila/simples-editor/pull/63) | `feat/16` | `dev` | `MERGED` |
+| `pm-avila` | [#64](https://github.com/pm-avila/simples-editor/pull/64) | `feat/17` | `dev` | `MERGED` |
+| `pm-avila` | [#65](https://github.com/pm-avila/simples-editor/pull/65) | `feat/18` | `dev` | `MERGED` |
+| `pm-avila` | [#66](https://github.com/pm-avila/simples-editor/pull/66) | `feat/19` | `dev` | `MERGED` |
+| `pm-avila` | [#67](https://github.com/pm-avila/simples-editor/pull/67) | `feat/20` | `dev` | `MERGED` |
+| `pm-avila` | [#68](https://github.com/pm-avila/simples-editor/pull/68) | `feat/23` | `dev` | `MERGED` |
+| `pm-avila` | [#69](https://github.com/pm-avila/simples-editor/pull/69) | `feat/21` | `dev` | `MERGED` |
+| `pm-avila` | [#70](https://github.com/pm-avila/simples-editor/pull/70) | `feat/22` | `dev` | `MERGED` |
+| `pm-avila` | [#71](https://github.com/pm-avila/simples-editor/pull/71) | `feat/24` | `dev` | `MERGED` |
+| `pm-avila` | [#72](https://github.com/pm-avila/simples-editor/pull/72) | `feat/25` | `dev` | `MERGED` |
+| `pm-avila` | [#73](https://github.com/pm-avila/simples-editor/pull/73) | `feat/26` | `dev` | `MERGED` |
+| `pm-avila` | [#74](https://github.com/pm-avila/simples-editor/pull/74) | `feat/27` | `dev` | `MERGED` |
+| `pm-avila` | [#75](https://github.com/pm-avila/simples-editor/pull/75) | `feat/28` | `dev` | `MERGED` |
+| `pm-avila` | [#76](https://github.com/pm-avila/simples-editor/pull/76) | `feat/29` | `dev` | `MERGED` |
+| `pm-avila` | [#77](https://github.com/pm-avila/simples-editor/pull/77) | `feat/30` | `dev` | `MERGED` |

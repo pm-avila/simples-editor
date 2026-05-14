@@ -1,0 +1,265 @@
+/* Examples Menu - Retro DOS Style (Issue #79) */
+
+.examples-menu {
+  position: fixed;
+  bottom: 80px;
+  left: 16px;
+  z-index: 50;
+}
+
+.examples-menu-toggle {
+  background: #c0c0c0;
+  border-top: 2px solid #dfdfdf;
+  border-left: 2px solid #dfdfdf;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: var(--font-vt323);
+  font-size: 12px;
+  color: #000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: all 0.2s ease;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.examples-menu-toggle:hover {
+  background: #dfdfdf;
+}
+
+.examples-menu-toggle:active {
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #dfdfdf;
+  border-bottom: 2px solid #dfdfdf;
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.examples-menu-icon {
+  display: inline-block;
+  font-size: 14px;
+}
+
+.examples-menu-label {
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+/* Panel */
+.examples-menu-panel {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 8px;
+  width: 320px;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5), inset 0 0 0 1px #ffffff;
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  animation: slideUp 0.2s ease forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.examples-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: linear-gradient(90deg, #000080, #1084d7);
+  color: #ffffff;
+  border-bottom: 1px solid #808080;
+}
+
+.examples-menu-header h3 {
+  margin: 0;
+  font-family: var(--font-vt323);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.examples-menu-close {
+  background: #c0c0c0;
+  border: 1px solid #808080;
+  color: #000;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-vt323);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.examples-menu-close:active {
+  border-color: #dfdfdf #000080 #000080 #dfdfdf;
+}
+
+/* Categories */
+.examples-menu-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+}
+
+.examples-menu-category {
+  background: #c0c0c0;
+  border: 1px solid #808080;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: var(--font-vt323);
+  font-size: 11px;
+  color: #000;
+  white-space: nowrap;
+  transition: all 0.1s;
+  flex: 1;
+  min-width: 70px;
+  text-align: center;
+}
+
+.examples-menu-category:hover {
+  background: #dfdfdf;
+}
+
+.examples-menu-category.active {
+  background: #000080;
+  color: #ffffff;
+  border: 1px solid #000080;
+}
+
+.examples-menu-category:active:not(.active) {
+  border: 1px solid #dfdfdf #000080 #000080 #dfdfdf;
+}
+
+/* List */
+.examples-menu-list {
+  flex: 1;
+  overflow-y: auto;
+  background: #c0c0c0;
+  padding: 4px;
+}
+
+.examples-menu-item {
+  width: 100%;
+  padding: 6px 8px;
+  background: #c0c0c0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-vt323);
+  font-size: 11px;
+  color: #000;
+  text-align: left;
+  transition: all 0.1s;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.examples-menu-item:hover {
+  background: #000080;
+  color: #ffffff;
+  border: 1px solid #dfdfdf;
+}
+
+.examples-menu-item:active {
+  background: #1084d7;
+  color: #ffffff;
+}
+
+.examples-menu-item-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+}
+
+.examples-menu-item-desc {
+  font-size: 10px;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.examples-menu-item:hover .examples-menu-item-desc {
+  color: #ffffff;
+}
+
+/* Footer */
+.examples-menu-footer {
+  padding: 6px 8px;
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
+  font-family: var(--font-vt323);
+  font-size: 10px;
+  color: #000080;
+  text-align: center;
+}
+
+.examples-menu-footer p {
+  margin: 0;
+}
+
+/* Scrollbar styling */
+.examples-menu-list::-webkit-scrollbar {
+  width: 16px;
+}
+
+.examples-menu-list::-webkit-scrollbar-track {
+  background: #c0c0c0;
+  border: 1px solid #808080;
+}
+
+.examples-menu-list::-webkit-scrollbar-thumb {
+  background: #dfdfdf;
+  border: 1px solid #808080;
+}
+
+.examples-menu-list::-webkit-scrollbar-thumb:hover {
+  background: #ffffff;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .examples-menu {
+    left: 8px;
+    bottom: 70px;
+  }
+
+  .examples-menu-panel {
+    width: 280px;
+    max-height: 400px;
+  }
+
+  .examples-menu-category {
+    min-width: 60px;
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .examples-menu-panel {
+    animation: none;
+  }
+}
