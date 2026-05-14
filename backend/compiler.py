@@ -1,12 +1,16 @@
 """
 Compiler service — wraps simplesc invocation via subprocess.
 """
+import logging
 import os
 import re
 import subprocess
 import tempfile
 
 SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
+
+if not os.path.exists(SIMPLESC_BIN):
+    logging.warning(f"simplesc compiler not found at {SIMPLESC_BIN}")
 
 
 def _parse_timeout(value: str, default: int = 15) -> int:
