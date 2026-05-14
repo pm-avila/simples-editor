@@ -1,4 +1,5 @@
-/* Retro Nerd Login Theme */
+/* Retro Nerd Login Theme - Override Base Styles */
+
 :root {
   --retro-bg-dark: #0a0e27;
   --retro-bg-darker: #050710;
@@ -10,13 +11,13 @@
   --retro-text-muted: #7080a0;
 }
 
+/* Override base container */
 .landing-container.retro-nerd {
-  background: linear-gradient(135deg, var(--retro-bg-darker) 0%, #0f1438 50%, #1a0f2e 100%);
+  background: linear-gradient(135deg, var(--retro-bg-darker) 0%, #0f1438 50%, #1a0f2e 100%) !important;
   position: relative;
   overflow: hidden;
 }
 
-/* Scanlines effect */
 .landing-container.retro-nerd::before {
   content: '';
   position: fixed;
@@ -35,7 +36,6 @@
   z-index: 9998;
 }
 
-/* CRT glow effect */
 .landing-container.retro-nerd::after {
   content: '';
   position: fixed;
@@ -49,27 +49,35 @@
   z-index: 1;
 }
 
-/* ASCII art header */
+/* Header should be hidden in retro mode */
 .landing-header.retro-nerd {
-  position: relative;
-  z-index: 10;
-  display: none;
+  display: none !important;
 }
 
-/* ASCII Title */
+/* Main content positioning */
+.landing-container.retro-nerd .landing-main {
+  position: relative;
+  z-index: 10;
+}
+
+/* ASCII Title Override */
 .landing-title.retro-nerd {
-  font-size: 16px;
-  line-height: 1.2;
-  letter-spacing: 2px;
-  font-weight: 700;
-  color: var(--retro-neon-cyan);
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0px !important;
+  font-weight: 700 !important;
+  color: var(--retro-neon-cyan) !important;
   text-shadow: 
     0 0 10px var(--retro-neon-cyan),
-    0 0 20px var(--retro-neon-magenta);
+    0 0 20px var(--retro-neon-magenta) !important;
   animation: retro-glitch 0.3s ease-in-out infinite, retro-flicker 0.15s ease-in-out infinite;
   transform: perspective(1000px) rotateX(1deg) rotateY(2deg);
-  margin-bottom: 10px;
-  font-family: 'Courier New', monospace;
+  margin-bottom: 15px !important;
+  font-family: 'Courier New', monospace !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important;
 }
 
 @keyframes retro-glitch {
@@ -77,12 +85,12 @@
     text-shadow: 
       -2px 0 var(--retro-neon-magenta),
       2px 0 var(--retro-neon-cyan),
-      0 0 10px var(--retro-neon-cyan);
+      0 0 10px var(--retro-neon-cyan) !important;
   }
   50% { 
     text-shadow: 
       0 0 10px var(--retro-neon-cyan),
-      0 0 20px var(--retro-neon-magenta);
+      0 0 20px var(--retro-neon-magenta) !important;
   }
 }
 
@@ -94,24 +102,35 @@
   80% { opacity: 1; }
 }
 
+/* Subtitle styling */
 .landing-subtitle.retro-nerd {
-  text-align: center;
-  font-size: 13px;
-  color: var(--retro-neon-green);
-  margin-bottom: 40px;
-  letter-spacing: 1px;
-  text-shadow: 0 0 5px var(--retro-neon-green);
+  text-align: center !important;
+  font-size: 13px !important;
+  color: var(--retro-neon-green) !important;
+  margin-bottom: 40px !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 0 5px var(--retro-neon-green) !important;
 }
 
-/* Card styling */
+/* Card styling - Override all inherited styles */
 .landing-card.retro-nerd {
-  background: rgba(10, 14, 39, 0.8);
-  border: 2px solid var(--retro-neon-cyan);
+  background: rgba(10, 14, 39, 0.8) !important;
+  border: 2px solid var(--retro-neon-cyan) !important;
+  border-radius: 0 !important;
+  padding: 40px !important;
   box-shadow: 
     0 0 10px var(--retro-neon-cyan),
     inset 0 0 20px rgba(0, 255, 255, 0.1),
-    0 0 40px rgba(0, 255, 255, 0.2);
+    0 0 40px rgba(0, 255, 255, 0.2) !important;
   animation: retro-box-pulse 4s ease-in-out infinite;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+  position: relative;
+  z-index: 10;
+}
+
+.landing-card.retro-nerd::before {
+  display: none !important;
 }
 
 @keyframes retro-box-pulse {
@@ -119,79 +138,110 @@
     box-shadow: 
       0 0 10px var(--retro-neon-cyan),
       inset 0 0 20px rgba(0, 255, 255, 0.1),
-      0 0 40px rgba(0, 255, 255, 0.2);
+      0 0 40px rgba(0, 255, 255, 0.2) !important;
   }
   50% { 
     box-shadow: 
       0 0 20px var(--retro-neon-cyan),
       inset 0 0 30px rgba(0, 255, 255, 0.15),
-      0 0 60px rgba(0, 255, 255, 0.3);
+      0 0 60px rgba(0, 255, 255, 0.3) !important;
   }
+}
+
+/* Form styling */
+.landing-card.retro-nerd .landing-form {
+  position: relative;
+  z-index: 10;
 }
 
 /* Form labels */
 .landing-label.retro-nerd {
-  font-size: 12px;
-  color: var(--retro-neon-yellow);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-shadow: 0 0 5px var(--retro-neon-yellow);
+  font-size: 12px !important;
+  color: var(--retro-neon-yellow) !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 0 5px var(--retro-neon-yellow) !important;
+  display: block !important;
+  margin-bottom: 6px !important;
 }
 
 /* Form inputs */
 .landing-input.retro-nerd {
-  background: rgba(5, 7, 16, 0.6);
-  border: 1px solid var(--retro-neon-cyan);
-  color: var(--retro-neon-cyan);
-  font-family: 'Courier New', monospace;
-  transition: all 0.3s ease;
+  background: rgba(5, 7, 16, 0.6) !important;
+  border: 1px solid var(--retro-neon-cyan) !important;
+  color: var(--retro-neon-cyan) !important;
+  font-family: 'Courier New', monospace !important;
+  transition: all 0.3s ease !important;
+  border-radius: 0 !important;
+  padding: 10px 12px !important;
+  font-size: 13px !important;
+  width: 100% !important;
 }
 
 .landing-input.retro-nerd::placeholder {
-  color: var(--retro-text-muted);
+  color: var(--retro-text-muted) !important;
 }
 
 .landing-input.retro-nerd:focus {
-  outline: none;
-  border-color: var(--retro-neon-magenta);
+  outline: none !important;
+  border-color: var(--retro-neon-magenta) !important;
   box-shadow: 
     0 0 8px var(--retro-neon-magenta),
-    inset 0 0 8px rgba(255, 0, 255, 0.1);
-  background: rgba(5, 7, 16, 0.8);
+    inset 0 0 8px rgba(255, 0, 255, 0.1) !important;
+  background: rgba(5, 7, 16, 0.8) !important;
 }
 
 .landing-input.retro-nerd:hover {
-  border-color: var(--retro-neon-green);
-  box-shadow: 0 0 5px var(--retro-neon-green);
+  border-color: var(--retro-neon-green) !important;
+  box-shadow: 0 0 5px var(--retro-neon-green) !important;
+}
+
+/* Password wrapper */
+.landing-password-wrapper {
+  position: relative;
 }
 
 /* Password toggle */
 .landing-password-toggle.retro-nerd {
-  color: var(--retro-neon-cyan);
-  background: rgba(0, 255, 255, 0.05);
-  border: 1px solid var(--retro-neon-cyan);
-  transition: all 0.2s ease;
+  color: var(--retro-neon-cyan) !important;
+  background: rgba(0, 255, 255, 0.05) !important;
+  border: 1px solid var(--retro-neon-cyan) !important;
+  transition: all 0.2s ease !important;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  cursor: pointer;
+  border-radius: 0 !important;
 }
 
 .landing-password-toggle.retro-nerd:hover {
-  background: rgba(0, 255, 255, 0.15);
-  box-shadow: 0 0 5px var(--retro-neon-cyan);
+  background: rgba(0, 255, 255, 0.15) !important;
+  box-shadow: 0 0 5px var(--retro-neon-cyan) !important;
 }
 
 /* Buttons */
 .landing-button.retro-nerd {
-  border: 1px solid var(--retro-neon-magenta);
-  background: rgba(255, 0, 255, 0.05);
-  color: var(--retro-neon-magenta);
-  font-family: 'Courier New', monospace;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.2s ease;
+  border: 1px solid var(--retro-neon-magenta) !important;
+  background: rgba(255, 0, 255, 0.05) !important;
+  color: var(--retro-neon-magenta) !important;
+  font-family: 'Courier New', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  transition: all 0.2s ease !important;
+  padding: 12px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border-radius: 0 !important;
+  cursor: pointer;
+  width: 100% !important;
 }
 
 .landing-button.retro-nerd:hover:not(:disabled) {
-  background: rgba(255, 0, 255, 0.15);
-  box-shadow: 0 0 15px var(--retro-neon-magenta);
+  background: rgba(255, 0, 255, 0.15) !important;
+  box-shadow: 0 0 15px var(--retro-neon-magenta) !important;
   transform: scale(1.02);
 }
 
@@ -206,10 +256,15 @@
 
 /* Error message */
 .landing-error-message.retro-nerd {
-  border: 1px solid var(--retro-neon-magenta);
-  background: rgba(255, 0, 255, 0.05);
-  color: var(--retro-neon-magenta);
+  border: 1px solid var(--retro-neon-magenta) !important;
+  background: rgba(255, 0, 255, 0.05) !important;
+  color: var(--retro-neon-magenta) !important;
   animation: retro-slide-down 0.3s ease;
+  padding: 10px 12px !important;
+  margin-bottom: 20px !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  border-radius: 0 !important;
 }
 
 @keyframes retro-slide-down {
@@ -225,29 +280,31 @@
 
 /* Form footer */
 .landing-form-footer.retro-nerd {
-  color: var(--retro-text-muted);
-  font-size: 11px;
+  color: var(--retro-text-muted) !important;
+  font-size: 11px !important;
+  margin-top: 20px !important;
+  text-align: center !important;
 }
 
 .landing-form-footer.retro-nerd a {
-  color: var(--retro-neon-green);
+  color: var(--retro-neon-green) !important;
   text-decoration: none;
   transition: all 0.2s ease;
   text-shadow: 0 0 5px transparent;
 }
 
 .landing-form-footer.retro-nerd a:hover {
-  text-shadow: 0 0 8px var(--retro-neon-green);
-  color: var(--retro-neon-cyan);
+  text-shadow: 0 0 8px var(--retro-neon-green) !important;
+  color: var(--retro-neon-cyan) !important;
 }
 
 /* Features grid */
 .landing-features.retro-nerd {
-  display: flex;
-  gap: 20px;
-  margin-top: 30px;
-  padding-top: 30px;
-  border-top: 1px solid rgba(0, 255, 255, 0.2);
+  display: flex !important;
+  gap: 20px !important;
+  margin-top: 30px !important;
+  padding-top: 30px !important;
+  border-top: 1px solid rgba(0, 255, 255, 0.2) !important;
 }
 
 .landing-feature.retro-nerd {
@@ -262,9 +319,20 @@
 }
 
 .landing-feature-label.retro-nerd {
-  color: var(--retro-neon-green);
-  font-size: 12px;
-  text-shadow: 0 0 5px var(--retro-neon-green);
+  color: var(--retro-neon-green) !important;
+  font-size: 12px !important;
+  text-shadow: 0 0 5px var(--retro-neon-green) !important;
+}
+
+/* Form group */
+.landing-form-group {
+  margin-bottom: 20px !important;
+}
+
+/* Footer */
+.landing-footer {
+  position: relative;
+  z-index: 10;
 }
 
 /* Reduce motion */
@@ -281,14 +349,19 @@
 /* Responsive */
 @media (max-width: 600px) {
   .landing-card.retro-nerd {
-    padding: 30px 20px;
+    padding: 30px 20px !important;
   }
 
   .landing-title.retro-nerd {
-    font-size: 14px;
+    font-size: 9px !important;
+    line-height: 1 !important;
   }
 
   .landing-features.retro-nerd {
-    gap: 15px;
+    gap: 15px !important;
+  }
+
+  .landing-button.retro-nerd {
+    font-size: 11px !important;
   }
 }
