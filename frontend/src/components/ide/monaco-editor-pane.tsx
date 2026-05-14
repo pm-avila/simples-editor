@@ -11,6 +11,7 @@ export const RETRO_THEME_ID = "retro-amber";
 
 export interface MonacoEditorPaneHandle {
   getValue(): string;
+  setValue(value: string): void;
   setMarkers(errors: CompileError[]): void;
   clearMarkers(): void;
 }
@@ -29,6 +30,9 @@ export const MonacoEditorPane = forwardRef<MonacoEditorPaneHandle, MonacoEditorP
     useImperativeHandle(ref, () => ({
       getValue() {
         return editorRef.current?.getValue() ?? "";
+      },
+      setValue(value: string) {
+        editorRef.current?.setValue(value);
       },
       setMarkers(errors: CompileError[]) {
         const monaco = monacoRef.current;

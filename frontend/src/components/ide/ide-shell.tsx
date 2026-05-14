@@ -8,6 +8,7 @@ import { TerminalPane } from "./terminal-pane";
 import type { TerminalPaneHandle } from "./terminal-pane";
 import { Toolbar } from "./toolbar";
 import type { IdeStatus } from "./toolbar";
+import { ExamplesMenu } from "./examples-menu";
 import { compileCode } from "../../lib/compile-api";
 import { createRunSessionClient } from "../../lib/run-session-client";
 import type { RunSessionClient } from "../../lib/run-session-client";
@@ -95,6 +96,13 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
     }
   }
 
+  const handleLoadExample = (code: string) => {
+    const editor = editorRef.current;
+    if (editor) {
+      editor.setValue(code);
+    }
+  }
+
   return (
     <div id="ide-shell" className="ide-container">
       <Toolbar
@@ -105,6 +113,7 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
           }}
           onLogout={onLogout}
         />
+      <ExamplesMenu onSelectExample={handleLoadExample} />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
           <div className="editor-area ide-editor">
