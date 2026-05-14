@@ -96,6 +96,15 @@ Expected healthy response:
 
     {"status": "ok", "service": "backend"}
 
+## Compiler Integration
+
+This project uses the real SIMPLES compiler from [pm-avila/simples-compiler](https://github.com/pm-avila/simples-compiler).
+
+The backend compiles SIMPLES source code to NASM assembly (`simplesc`) and executes binaries in a sandboxed environment.
+
+For detailed information about the backend, see [`backend/README.md`](./backend/README.md).
+For local development setup, see [`docs/SETUP.md`](./docs/SETUP.md).
+
 ## Supabase auth foundation
 
 Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally with the shared secret (`SUPABASE_JWT_SECRET`), without querying the database on every request.
