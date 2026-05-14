@@ -3,7 +3,10 @@ import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { registerSimplesLanguage, SIMPLES_LANGUAGE_ID } from "./simples-language";
 import { defineSimplesDarkTheme, SIMPLES_THEME_ID } from "./simples-theme";
+import { retroTheme } from "./retro-theme";
 import type { CompileError } from "../../lib/compile-api";
+
+export const RETRO_THEME_ID = "retro-amber";
 
 
 export interface MonacoEditorPaneHandle {
@@ -60,6 +63,7 @@ export const MonacoEditorPane = forwardRef<MonacoEditorPaneHandle, MonacoEditorP
       monacoRef.current = monaco;
       registerSimplesLanguage(monaco);
       defineSimplesDarkTheme(monaco);
+      monaco.editor.defineTheme(RETRO_THEME_ID, retroTheme as any);
     }
 
     function onMount(editor: Monaco.editor.IStandaloneCodeEditor) {
@@ -73,7 +77,7 @@ export const MonacoEditorPane = forwardRef<MonacoEditorPaneHandle, MonacoEditorP
         onMount={onMount}
         defaultLanguage={SIMPLES_LANGUAGE_ID}
         defaultValue={initialValue}
-        theme={SIMPLES_THEME_ID}
+        theme={RETRO_THEME_ID}
         options={{ readOnly }}
       />
     );
