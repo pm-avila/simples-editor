@@ -89,6 +89,19 @@ body {
   /* grid-template-areas: "editor nasm" "terminal terminal" */
 }
 
+/* IDE CRT Effects (Issue #79) */
+.ide-container {
+  background: var(--retro-bg);
+  color: var(--retro-fg);
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ide-editor {
+  animation: flicker 0.15s infinite 50ms;
+}
+
 .ide-panel-group {
   flex: 1;
   overflow: hidden;

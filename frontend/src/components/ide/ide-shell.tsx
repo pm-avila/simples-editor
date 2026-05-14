@@ -96,7 +96,7 @@ export function IdeShell({ token }: { token?: string }) {
   }
 
   return (
-    <div id="ide-shell">
+    <div id="ide-shell" className="ide-container">
       <Toolbar
           status={status}
           onRun={handleRun}
@@ -106,7 +106,7 @@ export function IdeShell({ token }: { token?: string }) {
         />
       <PanelGroup direction="horizontal" className="ide-panel-group">
         <Panel defaultSize={60} minSize={30}>
-          <div className="editor-area">
+          <div className="editor-area ide-editor">
             <MonacoEditorPane
               ref={editorRef}
               readOnly={status === "compiling" || status === "executing"}
@@ -124,6 +124,7 @@ export function IdeShell({ token }: { token?: string }) {
           onData={handleTerminalData}
         />
       </div>
+      <div className="scanlines"></div>
     </div>
   );
 }
