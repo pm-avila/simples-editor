@@ -454,7 +454,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(sent[0]["type"], "session_ready")
         self.assertEqual(sent[1]["type"], "compile_started")
 
-    def test_handle_run_session_forwards_stdout_and_relays_stdin(self):
+    @patch("backend.ws.run_session.compile_simples", return_value={"ok": True, "nasm": "; test\n"})
+    def test_handle_run_session_forwards_stdout_and_relays_stdin(self, mock_compile):
         import backend.ws.run_session as run_session_module
 
         fake_proc = FakePopen(stdout_data=b"prompt> ")
@@ -490,7 +491,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(sent[1]["command"], "stdin")
         self.assertEqual(sent[1]["state"], "idle")
 
-    def test_handle_run_session_emits_compile_protocol_sequence(self):
+    @patch("backend.ws.run_session.compile_simples", return_value={"ok": True, "nasm": "; test\n"})
+    def test_handle_run_session_emits_compile_protocol_sequence(self, mock_compile):
         import backend.ws.run_session as run_session_module
 
         fake_proc = FakePopen(stdout_data=b"ok\n")
@@ -514,7 +516,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertIn("exec_started", event_types)
         self.assertIn("stdout", event_types)
 
-    def test_handle_run_session_stop_and_ping_keep_connection_alive(self):
+    @patch("backend.ws.run_session.compile_simples", return_value={"ok": True, "nasm": "; test\n"})
+    def test_handle_run_session_stop_and_ping_keep_connection_alive(self, mock_compile):
         import backend.ws.run_session as run_session_module
 
         fake_proc = FakePopen()  # no stdout, exits immediately
@@ -536,7 +539,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertIn("exit", event_types)
         self.assertIn("pong", event_types)
 
-    def test_handle_run_session_emits_structured_json_logs_for_execution(self):
+    @patch("backend.ws.run_session.compile_simples", return_value={"ok": True, "nasm": "; test\n"})
+    def test_handle_run_session_emits_structured_json_logs_for_execution(self, mock_compile):
         import backend.ws.run_session as run_session_module
 
         fake_proc = FakePopen()  # no stdout, exits immediately
@@ -611,7 +615,8 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         self.assertEqual(sent[0]["retry_after"], 19)
         self.assertEqual(len(sent), 1)
 
-    def test_handle_run_session_triggers_wall_clock_timeout(self):
+    @patch("backend.ws.run_session.compile_simples", return_value={"ok": True, "nasm": "; test\n"})
+    def test_handle_run_session_triggers_wall_clock_timeout(self, mock_compile):
         import backend.ws.run_session as run_session_module
 
         fake_proc = FakePopen(hang=True)  # blocks stdout until killed
