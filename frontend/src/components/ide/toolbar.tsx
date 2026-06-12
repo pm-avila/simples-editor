@@ -11,12 +11,13 @@ interface ToolbarProps {
   status: IdeStatus;
   onRun: () => void;
   onStop: () => void;
+  onClearTerminal: () => void;
   onLogout?: () => void;
   onExampleSelect?: (example: Example) => void;
   examples?: Example[];
 }
 
-export function Toolbar({ status, onRun, onStop, onLogout, onExampleSelect, examples = [] }: ToolbarProps) {
+export function Toolbar({ status, onRun, onStop, onClearTerminal, onLogout, onExampleSelect, examples = [] }: ToolbarProps) {
   const isRunning = status === "compiling" || status === "executing";
   const [showExamples, setShowExamples] = useState(false);
 
@@ -30,6 +31,9 @@ export function Toolbar({ status, onRun, onStop, onLogout, onExampleSelect, exam
       <div className="toolbar-section">
         <button className="toolbar-button" onClick={isRunning ? onStop : onRun} disabled={false}>
           {isRunning ? "Stop" : "Run"}
+        </button>
+        <button className="toolbar-button" onClick={onClearTerminal}>
+          Limpar terminal
         </button>
         {status === "compiling" && <span className="toolbar-status">Compiling...</span>}
         {status === "executing" && <span className="toolbar-status">Running...</span>}

@@ -65,10 +65,21 @@ def extract_token_from_handshake(headers, query_args):
     raise HandshakeAuthError("missing bearer token")
 
 
-def authenticate_ws_handshake(headers, query_args, jwt_secret, supabase_url=None):
+def authenticate_ws_handshake(
+    headers,
+    query_args,
+    jwt_secret,
+    supabase_url=None,
+    supabase_anon_key=None,
+):
     token = extract_token_from_handshake(headers, query_args)
     try:
-        claims = decode_supabase_jwt(token, jwt_secret, supabase_url=supabase_url)
+        claims = decode_supabase_jwt(
+            token,
+            jwt_secret,
+            supabase_url=supabase_url,
+            supabase_anon_key=supabase_anon_key,
+        )
         return extract_user_id(claims)
     except AuthError as exc:
         raise HandshakeAuthError("invalid token") from exc

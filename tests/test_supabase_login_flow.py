@@ -101,6 +101,20 @@ class ServerRuntimeConfigTest(unittest.TestCase):
             "Handler must define do_GET to intercept /config.js",
         )
 
+    def test_no_cache_headers_are_set_for_fresh_frontend_assets(self):
+        class FakeHandler:
+            def __init__(self):
+                self.headers = []
+
+            def send_header(self, name, value):
+                self.headers.append((name, value))
+
+        handler = FakeHandler()
+        self._server_mod._send_no_cache_headers(handler)
+
+        self.assertIn(("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"), handler.headers)
+        self.assertIn(("Pragma", "no-cache"), handler.headers)
+
 
 if __name__ == "__main__":
     unittest.main()

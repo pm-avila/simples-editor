@@ -38,9 +38,19 @@ class BackendJwtCoreTest(unittest.TestCase):
         claims = self.module.decode_supabase_jwt(token, "secret")
         self.assertEqual(claims["sub"], "user-123")
 
+    def test_decode_supabase_jwt_accepts_hs256_token_with_aud_claim(self):
+        token = jwt.encode({"sub": "user-123", "aud": "authenticated"}, "secret", algorithm="HS256")
+        claims = self.module.decode_supabase_jwt(token, "secret")
+        self.assertEqual(claims["sub"], "user-123")
+
     def test_decode_supabase_jwt_rejects_invalid_token(self):
         with self.assertRaisesRegex(self.module.AuthError, "invalid token"):
             self.module.decode_supabase_jwt("not-a-jwt", "secret")
+
+    def test_decode_supabase_jwt_rejects_hs256_when_secret_missing(self):
+        token = jwt.encode({"sub": "user-123"}, "secret", algorithm="HS256")
+        with self.assertRaisesRegex(self.module.AuthError, "SUPABASE_JWT_SECRET not configured"):
+            self.module.decode_supabase_jwt(token, None)
 
     def test_extract_user_id_returns_sub(self):
         self.assertEqual(self.module.extract_user_id({"sub": "user-123"}), "user-123")
@@ -72,6 +82,59 @@ class BackendJwtCoreTest(unittest.TestCase):
             jwks = self.module._fetch_jwks_json("https://example.supabase.co")
 
         self.assertEqual(jwks, expected)
+
+    def test_decode_supabase_jwt_uses_jwks_for_rs256(self):
+        with patch.object(
+            self.module.jwt,
+            "get_unverified_header",
+            return_value={"alg": "RS256", "kid": "kid-123"},
+        ), patch.object(
+            self.module,
+            "_fetch_public_key",
+            return_value="public-key",
+        ) as fetch_key_mock, patch.object(
+            self.module.jwt,
+            "decode",
+            return_value={"sub": "user-123"},
+        ) as decode_mock:
+            claims = self.module.decode_supabase_jwt(
+                "token",
+                jwt_secret=None,
+                supabase_url="https://example.supabase.co",
+            )
+
+        fetch_key_mock.assert_called_once_with("https://example.supabase.co", "kid-123")
+        decode_mock.assert_called_once_with(
+            "token",
+            "public-key",
+            algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+        self.assertEqual(claims["sub"], "user-123")
+
+    def test_decode_supabase_jwt_uses_remote_validation_for_hs256_without_secret(self):
+        with patch.object(
+            self.module.jwt,
+            "get_unverified_header",
+            return_value={"alg": "HS256"},
+        ), patch.object(
+            self.module,
+            "_fetch_remote_user_claims",
+            return_value={"sub": "user-123"},
+        ) as remote_validate_mock:
+            claims = self.module.decode_supabase_jwt(
+                "token",
+                jwt_secret=None,
+                supabase_url="https://example.supabase.co",
+                supabase_anon_key="anon-key",
+            )
+
+        remote_validate_mock.assert_called_once_with(
+            "https://example.supabase.co",
+            "token",
+            "anon-key",
+        )
+        self.assertEqual(claims["sub"], "user-123")
 
 
 from dataclasses import dataclass
@@ -128,7 +191,6 @@ class BackendJwtReadmeTest(unittest.TestCase):
         content = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("## Backend JWT validation", content)
         self.assertIn("verify_jwt", content)
-        self.assertIn("SUPABASE_JWT_SECRET", content)
         self.assertIn("sub", content)
         self.assertIn("user_id", content)
         self.assertIn("JWT", content)

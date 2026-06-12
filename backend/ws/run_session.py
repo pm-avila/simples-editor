@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import queue
 import subprocess
 import tempfile
@@ -67,6 +68,13 @@ def _parse_timeout(value: str, default: int = 10) -> int:
 EXECUTION_TIMEOUT = _parse_timeout(os.environ.get("EXECUTION_TIMEOUT", "10"))
 
 
+def _build_exec_command(binary_path: str, machine: str | None = None) -> list[str]:
+    target_machine = (machine or platform.machine()).lower()
+    if target_machine in {"aarch64", "arm64"}:
+        return ["/usr/bin/qemu-i386-static", binary_path]
+    return [binary_path]
+
+
 def _send_json(ws, payload):
     ws.send(json.dumps(payload))
 
@@ -78,14 +86,21 @@ def _client_ip(request):
     return getattr(request, "remote_addr", None) or "unknown"
 
 
-def handle_run_session(ws, request, jwt_secret, supabase_url=None):
-    user_id = authenticate_ws_handshake(request.headers, request.args, jwt_secret, supabase_url=supabase_url)
+def handle_run_session(ws, request, jwt_secret, supabase_url=None, supabase_anon_key=None):
+    user_id = authenticate_ws_handshake(
+        request.headers,
+        request.args,
+        jwt_secret,
+        supabase_url=supabase_url,
+        supabase_anon_key=supabase_anon_key,
+    )
     request_id = (
         request.headers.get("X-Request-ID")
         or request.headers.get("X-Request-Id")
         or uuid.uuid4().hex
     )
-    allowed, retry_after = allow_execution_request(user_id, _client_ip(request))
+    client_ip = _client_ip(request)
+    allowed, retry_after = allow_execution_request(user_id, client_ip)
     if not allowed:
         _send_json(
             ws,
@@ -96,7 +111,7 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
             "execution_rate_limited",
             user_id=user_id,
             request_id=request_id,
-            client_ip=_client_ip(request),
+            client_ip=client_ip,
             retry_after=retry_after,
         )
         return
@@ -166,7 +181,7 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
                 "execution_timeout",
                 user_id=user_id,
                 request_id=request_id,
-                client_ip=_client_ip(request),
+                client_ip=client_ip,
                 duration_ms=duration_ms,
             )
             _send_json(ws, {"type": "timeout"})
@@ -264,7 +279,7 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
                     "execution_started",
                     user_id=user_id,
                     request_id=request_id,
-                    client_ip=_client_ip(request),
+                    client_ip=client_ip,
                 )
 
                 with state_lock:
@@ -278,7 +293,7 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
                 os.chmod(bin_path, 0o755)
 
                 proc = subprocess.Popen(
-                    [bin_path],
+                    _build_exec_command(bin_path),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     stdin=subprocess.PIPE,
@@ -294,7 +309,11 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
                 def _read_stdout(p: subprocess.Popen, q: "queue.Queue[bytes | None]") -> None:
                     try:
                         assert p.stdout is not None
-                        for chunk in iter(lambda: p.stdout.read(256), b""):
+                        if hasattr(p.stdout, "read1"):
+                            reader = lambda: p.stdout.read1(256)
+                        else:
+                            reader = lambda: p.stdout.read(256)
+                        for chunk in iter(reader, b""):
                             q.put(chunk)
                     finally:
                         q.put(None)
@@ -351,7 +370,7 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
                         "execution_finished",
                         user_id=user_id,
                         request_id=request_id,
-                        client_ip=_client_ip(request),
+                        client_ip=client_ip,
                         duration_ms=duration_ms,
                         exit_code=exit_code,
                     )
@@ -395,4 +414,3 @@ def handle_run_session(ws, request, jwt_secret, supabase_url=None):
         if timeout_timer is not None:
             timeout_timer.cancel()
         METRICS.websocket_disconnected()
-

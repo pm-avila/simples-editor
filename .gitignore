@@ -48,3 +48,10 @@ frontend/node_modules/
 .agents/
 issue24.json
 pr71.json
+.task-*-status.txt
+TASK-*-RESULTS.md
+copilot-session-*.md
+
+# iCloud sync conflict duplicates (e.g. "compiler 2.py")
+* 2.*
+* 2

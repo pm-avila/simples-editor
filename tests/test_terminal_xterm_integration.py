@@ -72,13 +72,26 @@ class TerminalXtermIntegrationTest(unittest.TestCase):
     def test_ide_shell_wires_terminal_input_and_stdout_for_leia_flow(self):
         source = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
         self.assertIn("createRunSessionClient", source)
-        self.assertRegex(source, re.compile(r"handleTerminalData[\s\S]*sendStdin"))
-        self.assertRegex(source, re.compile(r"onStdout[\s\S]*terminalRef\.current\?\.write"))
-        self.assertIn('terminalRef.current?.write("$ simplesc run\\n");', source)
+        self.assertRegex(source, re.compile(r"const\s+stdinBufferRef\s*=\s*useRef\(\"\"\)"))
+        self.assertRegex(source, re.compile(r"const\s+normalizeTerminalNewlines\s*=\s*\(data:\s*string\)\s*=>"))
+        self.assertRegex(source, re.compile(r"data\.replace\(/\\r\?\\n/g,\s*\"\\r\\n\"\)"))
+        self.assertRegex(source, re.compile(r'if\s*\(char\s*===\s*"\\r"\s*\|\|\s*char\s*===\s*"\\n"\)\s*\{[\s\S]*sendStdin\([\s\S]*\\n'))
+        self.assertRegex(source, re.compile(r"stdinBufferRef\.current\s*\+=\s*char"))
+        self.assertRegex(source, re.compile(r"onStdout:\s*\(data\)\s*=>\s*terminalRef\.current\?\.write\(normalizeTerminalNewlines\(data\)\)"))
+        self.assertRegex(source, re.compile(r'payload\.type === "exec_started"[\s\S]*terminalRef\.current\?\.focus\('))
+        self.assertRegex(source, re.compile(r'terminalRef\.current\?\.write\("\$ simplesc run\\r?\\n"\);'))
         self.assertRegex(source, re.compile(r"runSessionRef\.current\?\.start\("))
         self.assertRegex(source, re.compile(r'setStatus\("executing"\)'))
         self.assertRegex(source, re.compile(r'readOnly=\{status === "compiling" \|\| status === "executing"\}'))
         self.assertIn("rate_limited", source)
+
+    def test_toolbar_exposes_clear_terminal_action(self):
+        toolbar = (ROOT / "frontend" / "src" / "components" / "ide" / "toolbar.tsx").read_text(encoding="utf-8")
+        shell = (ROOT / "frontend" / "src" / "components" / "ide" / "ide-shell.tsx").read_text(encoding="utf-8")
+        self.assertRegex(toolbar, re.compile(r"onClearTerminal:\s*\(\)\s*=>\s*void"))
+        self.assertRegex(toolbar, re.compile(r"onClick=\{onClearTerminal\}"))
+        self.assertIn("Limpar terminal", toolbar)
+        self.assertRegex(shell, re.compile(r"<Toolbar[\s\S]*onClearTerminal=\{\(\)\s*=>\s*terminalRef\.current\?\.clear\(\)\}"))
 
 
 if __name__ == "__main__":

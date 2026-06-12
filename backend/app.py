@@ -137,7 +137,13 @@ if sock is not None:
             ws.close(1011)
             return
         try:
-            handle_run_session(ws, request, auth.jwt_secret, supabase_url=auth.url)
+            handle_run_session(
+                ws,
+                request,
+                auth.jwt_secret,
+                supabase_url=auth.url,
+                supabase_anon_key=auth.anon_key,
+            )
         except HandshakeAuthError:
             ws.close(1008)
         except RunSessionError:

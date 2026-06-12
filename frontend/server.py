@@ -11,6 +11,21 @@ _DEFAULT_URL = "https://example.supabase.co"
 _DEFAULT_KEY = "dev-anon-key"
 
 
+def _send_no_cache_headers(handler) -> None:
+    handler.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    handler.send_header("Pragma", "no-cache")
+
+
+def _serve_bytes(handler, content_type: str, body: bytes) -> None:
+    handler.send_response(200)
+    handler.send_header("Content-Type", content_type)
+    _send_no_cache_headers(handler)
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    if handler.command != "HEAD":
+        handler.wfile.write(body)
+
+
 def _build_config_js() -> bytes:
     """Return config.js content populated from runtime environment variables."""
     def _js_str(s: str) -> str:
@@ -29,15 +44,28 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(DIST), **kwargs)
 
     def do_GET(self):
-        if self.path.split("?")[0] == "/config.js":
-            body = _build_config_js()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/javascript; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+        path = self.path.split("?")[0]
+        if path in {"/", "/index.html"}:
+            index = DIST / "index.html"
+            if index.exists():
+                _serve_bytes(self, "text/html; charset=utf-8", index.read_bytes())
+                return
+        if path == "/config.js":
+            _serve_bytes(self, "application/javascript; charset=utf-8", _build_config_js())
             return
         super().do_GET()
+
+    def do_HEAD(self):
+        path = self.path.split("?")[0]
+        if path in {"/", "/index.html"}:
+            index = DIST / "index.html"
+            if index.exists():
+                _serve_bytes(self, "text/html; charset=utf-8", index.read_bytes())
+                return
+        if path == "/config.js":
+            _serve_bytes(self, "application/javascript; charset=utf-8", _build_config_js())
+            return
+        super().do_HEAD()
 
     def send_error(self, code, message=None, explain=None):
         # SPA fallback: serve index.html for any 404 so client-side routing works
@@ -46,6 +74,7 @@ class Handler(SimpleHTTPRequestHandler):
             if index.exists():
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
+                _send_no_cache_headers(self)
                 self.end_headers()
                 self.wfile.write(index.read_bytes())
                 return

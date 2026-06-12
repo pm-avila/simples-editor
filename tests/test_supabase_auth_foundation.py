@@ -20,7 +20,7 @@ class SupabaseFoundationFilesTest(unittest.TestCase):
         content = (ROOT / ".env.example").read_text(encoding="utf-8")
         self.assertIn("SUPABASE_URL=", content)
         self.assertIn("SUPABASE_ANON_KEY=", content)
-        self.assertIn("SUPABASE_JWT_SECRET=", content)
+        self.assertNotIn("SUPABASE_JWT_SECRET=", content)
 
     def test_supabase_config_enables_auth_for_local_project(self):
         content = (ROOT / "supabase" / "config.toml").read_text(encoding="utf-8")
@@ -69,6 +69,17 @@ class BackendAuthConfigTest(unittest.TestCase):
         self.assertEqual(config.anon_key, "anon")
         self.assertEqual(config.jwt_secret, "secret")
 
+    def test_load_supabase_auth_config_allows_missing_jwt_secret(self):
+        config = self.module.load_supabase_auth_config(
+            {
+                "SUPABASE_URL": "https://demo.supabase.co",
+                "SUPABASE_ANON_KEY": "anon",
+            }
+        )
+        self.assertEqual(config.url, "https://demo.supabase.co")
+        self.assertEqual(config.anon_key, "anon")
+        self.assertIsNone(config.jwt_secret)
+
     def test_auth_model_summary_explains_local_jwt_validation(self):
         summary = self.module.auth_model_summary()
         self.assertIn("auth.users", summary)
@@ -92,7 +103,6 @@ class ReadmeSupabaseAuthFoundationTest(unittest.TestCase):
         self.assertIn("Supabase", content)
         self.assertIn(".env.example", content)
         self.assertIn("SUPABASE_URL", content)
-        self.assertIn("SUPABASE_JWT_SECRET", content)
         self.assertIn("auth.users", content)
         self.assertIn("JWT", content)
         self.assertIn("without querying the database", content)

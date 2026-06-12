@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       nasm \
       binutils-i686-linux-gnu \
+      qemu-user-static \
       python3 \
       python3-pip \
       ca-certificates \

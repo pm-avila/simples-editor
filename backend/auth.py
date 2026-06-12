@@ -37,25 +37,51 @@ def _fetch_jwks_json(supabase_url: str) -> dict:
             raise AuthError("failed to fetch JWKS") from exc
 
 
-def _fetch_ec_public_key(supabase_url: str, kid: str):
-    """Fetch and cache EC public key from Supabase JWKS endpoint."""
+def _fetch_remote_user_claims(supabase_url: str, token: str, anon_key: str) -> dict:
+    user_uri = supabase_url.rstrip("/") + "/auth/v1/user"
+    req = urllib.request.Request(
+        user_uri,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "apikey": anon_key,
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read())
+    except Exception as exc:
+        raise AuthError("invalid token") from exc
+
+
+def _fetch_public_key(supabase_url: str, kid: str):
+    """Fetch and cache public key from Supabase JWKS endpoint."""
     cache_key = f"{supabase_url}#{kid}"
     if cache_key in _jwks_cache:
         return _jwks_cache[cache_key]
 
     jwks = _fetch_jwks_json(supabase_url)
 
-    from jwt.algorithms import ECAlgorithm  # requires cryptography package
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
-            pub_key = ECAlgorithm.from_jwk(json.dumps(key))
+            kty = key.get("kty")
+            if kty == "EC":
+                from jwt.algorithms import ECAlgorithm  # requires cryptography package
+                pub_key = ECAlgorithm.from_jwk(json.dumps(key))
+            elif kty == "RSA":
+                from jwt.algorithms import RSAAlgorithm  # requires cryptography package
+                pub_key = RSAAlgorithm.from_jwk(json.dumps(key))
+            else:
+                raise AuthError(f"unsupported JWKS key type: {kty}")
             _jwks_cache[cache_key] = pub_key
             return pub_key
 
     raise AuthError(f"no key with kid={kid} in JWKS")
 
 
-def decode_supabase_jwt(token, jwt_secret, supabase_url=None):
+_JWT_DECODE_OPTIONS = {"verify_aud": False}
+
+
+def decode_supabase_jwt(token, jwt_secret=None, supabase_url=None, supabase_anon_key=None):
     try:
         header = jwt.get_unverified_header(token)
     except jwt.PyJWTError as exc:
@@ -63,18 +89,26 @@ def decode_supabase_jwt(token, jwt_secret, supabase_url=None):
 
     alg = header.get("alg", "HS256")
 
-    if alg == "ES256":
+    if alg in {"ES256", "RS256"}:
         if not supabase_url:
-            raise AuthError("ES256 token but supabase_url not provided")
+            raise AuthError(f"{alg} token but supabase_url not provided")
         kid = header.get("kid")
-        pub_key = _fetch_ec_public_key(supabase_url, kid)
+        if not kid:
+            raise AuthError(f"{alg} token missing kid")
+        pub_key = _fetch_public_key(supabase_url, kid)
         try:
-            return jwt.decode(token, pub_key, algorithms=["ES256"])
+            return jwt.decode(token, pub_key, algorithms=[alg], options=_JWT_DECODE_OPTIONS)
         except jwt.PyJWTError as exc:
             raise AuthError("invalid token") from exc
 
+    if alg == "HS256" and not jwt_secret:
+        if supabase_url and supabase_anon_key:
+            return _fetch_remote_user_claims(supabase_url, token, supabase_anon_key)
+
+    if not jwt_secret:
+        raise AuthError("HS256 token but SUPABASE_JWT_SECRET not configured")
     try:
-        return jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        return jwt.decode(token, jwt_secret, algorithms=["HS256"], options=_JWT_DECODE_OPTIONS)
     except jwt.PyJWTError as exc:
         raise AuthError("invalid token") from exc
 

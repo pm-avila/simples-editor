@@ -124,6 +124,8 @@ fim`,
   },
 ];
 
+const normalizeTerminalNewlines = (data: string) => data.replace(/\r?\n/g, "\r\n");
+
 export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () => void }) {
   const [status, setStatus] = useState<IdeStatus>("idle");
   const [nasmContent, setNasmContent] = useState("");
@@ -131,21 +133,25 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
   const editorRef = useRef<MonacoEditorPaneHandle>(null);
   const terminalRef = useRef<TerminalPaneHandle>(null);
   const runSessionRef = useRef<RunSessionClient | null>(null);
+  const stdinBufferRef = useRef("");
   
   const examples = useMemo(() => SIMPLES_EXAMPLES, []);
 
   const handleRunSessionEvent = useCallback((payload: Record<string, unknown>) => {
     if (payload.type === "exec_started") {
+      terminalRef.current?.focus();
       setStatus("executing");
       return;
     }
 
     if (payload.type === "exit" || payload.type === "timeout") {
+      stdinBufferRef.current = "";
       setStatus("idle");
       return;
     }
 
     if (payload.type === "runtime_error") {
+      stdinBufferRef.current = "";
       setStatus("idle");
       return;
     }
@@ -157,11 +163,34 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
   }, []);
 
   const handleRunSessionClose = useCallback(() => {
+    stdinBufferRef.current = "";
     setStatus((prev) => (prev === "executing" ? "idle" : prev));
   }, []);
   
   const handleTerminalData = useCallback((data: string) => {
-    runSessionRef.current?.sendStdin(data);
+    if (!data) return;
+    for (const char of data) {
+      if (char === "\r" || char === "\n") {
+        terminalRef.current?.write("\r\n");
+        runSessionRef.current?.sendStdin(`${stdinBufferRef.current}\n`);
+        stdinBufferRef.current = "";
+        continue;
+      }
+      if (char === "\u007F") {
+        if (stdinBufferRef.current.length === 0) {
+          continue;
+        }
+        stdinBufferRef.current = stdinBufferRef.current.slice(0, -1);
+        terminalRef.current?.write("\b \b");
+        continue;
+      }
+      if (char < " " || char === "\u001B") {
+        runSessionRef.current?.sendStdin(char);
+        continue;
+      }
+      stdinBufferRef.current += char;
+      terminalRef.current?.write(char);
+    }
   }, []);
 
   function handleDoubleClick() {
@@ -179,6 +208,7 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
     if (!editor) return;
     const code = editor.getValue();
     editor.clearMarkers();
+    stdinBufferRef.current = "";
     terminalRef.current?.clear();
     terminalRef.current?.write("$ simplesc run\r\n");
     setStatus("compiling");
@@ -189,7 +219,7 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
         terminalRef.current?.write("Compilação concluída com sucesso.\r\n");
         if (!runSessionRef.current) {
           runSessionRef.current = createRunSessionClient({
-            onStdout: (data) => terminalRef.current?.write(data),
+          onStdout: (data) => terminalRef.current?.write(normalizeTerminalNewlines(data)),
             onEvent: handleRunSessionEvent,
             onClose: handleRunSessionClose,
             token,
@@ -225,6 +255,7 @@ export function IdeShell({ token, onLogout }: { token?: string; onLogout?: () =>
         onStop={() => {
           runSessionRef.current?.stop();
         }}
+        onClearTerminal={() => terminalRef.current?.clear()}
         onLogout={onLogout}
         onExampleSelect={handleLoadExample}
         examples={examples}

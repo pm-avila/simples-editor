@@ -105,6 +105,20 @@ class WsEndpointRegistrationTest(unittest.TestCase):
         self.assertIn("/ws/run", rules)
 
 
+class RunSessionExecutionCommandTest(unittest.TestCase):
+    def test_build_exec_command_uses_qemu_on_arm(self):
+        import backend.ws.run_session as run_session_module
+
+        command = run_session_module._build_exec_command("/tmp/prog", machine="aarch64")
+        self.assertEqual(command, ["/usr/bin/qemu-i386-static", "/tmp/prog"])
+
+    def test_build_exec_command_uses_native_binary_on_x86(self):
+        import backend.ws.run_session as run_session_module
+
+        command = run_session_module._build_exec_command("/tmp/prog", machine="x86_64")
+        self.assertEqual(command, ["/tmp/prog"])
+
+
 class FlaskSockImportGuardTest(unittest.TestCase):
     @staticmethod
     def _load_app_module_raising_on_flask_sock(module_error):
@@ -252,7 +266,11 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             app_module,
             "load_supabase_auth_config",
-            return_value=SimpleNamespace(jwt_secret="secret", url="https://example.supabase.co"),
+            return_value=SimpleNamespace(
+                jwt_secret="secret",
+                url="https://example.supabase.co",
+                anon_key="anon-key",
+            ),
         ), patch.object(
             app_module,
             "handle_run_session",
@@ -284,7 +302,11 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         with patch.object(
             app_module,
             "load_supabase_auth_config",
-            return_value=SimpleNamespace(jwt_secret="secret", url="https://example.supabase.co"),
+            return_value=SimpleNamespace(
+                jwt_secret="secret",
+                url="https://example.supabase.co",
+                anon_key="anon-key",
+            ),
         ), patch.object(
             app_module,
             "handle_run_session",
@@ -308,12 +330,29 @@ class WsRunSessionAuthBehaviorTest(unittest.TestCase):
         ) as auth_mock:
             run_session_module.handle_run_session(ws, request, "secret")
 
-        auth_mock.assert_called_once_with(request.headers, request.args, "secret", supabase_url=None)
+        auth_mock.assert_called_once_with(
+            request.headers,
+            request.args,
+            "secret",
+            supabase_url=None,
+            supabase_anon_key=None,
+        )
         self.assertEqual(len(ws.sent), 1)
         payload = json.loads(ws.sent[0])
         self.assertEqual(payload["type"], "session_ready")
         self.assertEqual(payload["state"], "idle")
         self.assertEqual(payload["user_id"], "user-123")
+
+
+class WsRunSessionSourceContractTest(unittest.TestCase):
+    def test_run_session_captures_client_ip_before_background_timeout(self):
+        source = (ROOT / "backend" / "ws" / "run_session.py").read_text(encoding="utf-8")
+        self.assertIn("client_ip = _client_ip(request)", source)
+        self.assertNotIn("client_ip=_client_ip(request)", source)
+
+    def test_run_session_uses_nonblocking_stdout_read_strategy(self):
+        source = (ROOT / "backend" / "ws" / "run_session.py").read_text(encoding="utf-8")
+        self.assertIn("read1(256)", source)
 
     def test_handle_run_session_bootstrap_payload_shape_regression(self):
         import backend.ws.run_session as run_session_module

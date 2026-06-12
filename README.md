@@ -81,7 +81,6 @@ Todas as variáveis necessárias estão documentadas em `.env.example`. Copie-o 
 |----------|-----------|
 | `SUPABASE_URL` | URL do projeto Supabase |
 | `SUPABASE_ANON_KEY` | Chave anônima pública do Supabase |
-| `SUPABASE_JWT_SECRET` | Segredo JWT do Supabase |
 | `COMPILE_TIMEOUT` | Tempo limite de compilação (segundos) |
 | `EXECUTION_TIMEOUT` | Tempo limite de execução (segundos) |
 | `SANDBOX_IMAGE` | Imagem Docker do sandbox de execução |
@@ -107,15 +106,13 @@ For local development setup, see [`docs/SETUP.md`](./docs/SETUP.md).
 
 ## Supabase auth foundation
 
-Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally with the shared secret (`SUPABASE_JWT_SECRET`), without querying the database on every request.
+Sprint 1 uses Supabase as the identity provider for v1. The authentication model is based on Supabase Auth and its native `auth.users` table. The backend validates JWTs locally (JWKS for modern asymmetric signing keys), without querying the database on every request.
 
 ## Backend JWT validation
 
 Sprint 1 validates Supabase JWTs in the backend with a shared `verify_jwt` mechanism.
 
-The backend depends on:
-
-- `SUPABASE_JWT_SECRET`
+The backend depends on `SUPABASE_URL` to resolve JWKS (`/auth/v1/.well-known/jwks.json`) for asymmetric tokens. Legacy HS256 projects may still set `SUPABASE_JWT_SECRET`.
 
 The validator decodes the JWT locally, extracts `user_id` from the `sub` claim, and protects backend handlers without querying the database for each request.
 
